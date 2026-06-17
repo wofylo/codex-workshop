@@ -54,6 +54,8 @@ Production deploys automatically when `main` changes.
 
 The default Vercel domain is enough for v1. A custom domain can be added later.
 
+Disable Vercel preview deployments for v1 unless a separate preview Supabase project exists. A preview deployment connected to production Supabase would let test builds read or mutate production users, questions, progress, and admin data.
+
 ## Supabase
 
 Supabase provides:
@@ -177,6 +179,14 @@ New users are pending by default.
 
 During sign-up, users must explicitly accept that their display name, progress summary, and leaderboard score are visible to other approved users. This is required because v1 does not include a leaderboard opt-out.
 
+Display names are public, so v1 validates them:
+
+- 3-40 characters.
+- Letters, numbers, spaces, underscores, and hyphens only.
+- Unique among active users.
+- Users cannot change them themselves in v1.
+- Admins can edit them for moderation.
+
 Supabase email confirmation and app approval are separate:
 
 - Supabase email confirmation proves the email address is valid if confirmation is enabled.
@@ -193,6 +203,11 @@ Admin choices:
 
 Soft-delete means the app keeps the user record and history but blocks access and removes the user from public views.
 
+The dashboard and database must protect the admin account set:
+
+- An admin cannot demote or delete themselves.
+- The last active approved admin cannot be demoted, rejected, or soft-deleted.
+
 ## Content Editing
 
 Study-guide content starts as Markdown files in the repo.
@@ -205,6 +220,14 @@ To update content:
 4. Users see the updated content.
 
 Question bank content is different. Questions are managed in the admin dashboard and stored in Supabase.
+
+Markdown should be rendered safely:
+
+- Load only known files from the repo.
+- Parse on the server.
+- Escape or sanitize raw HTML.
+- Allow only expected Markdown elements.
+- Do not render user-submitted Markdown in v1.
 
 ## Question Editing
 
@@ -222,6 +245,8 @@ V1 question rules:
 - Chinese generated or added later.
 
 AI-generated questions do not become active immediately. They enter `pending_review`, and admins publish them after review. Quizzes and mock exams use only `active` questions.
+
+Attempts store a frozen copy of the selected questions, answer choices, correct answer, and order. This keeps old scores stable even if an admin edits a question later.
 
 ## AI Configuration
 
@@ -242,6 +267,8 @@ The daily AI limit must be enforced by the database in one atomic operation. The
 
 The first version uses UTC day boundaries for the daily limit.
 
+The AI usage check must identify the user from the logged-in session on the server/database side. The client must not send a user id that the server trusts.
+
 The AI tutor should answer from retrieved study-guide chunks only. If the current Markdown study material does not support an answer, it should politely say it does not know from the current study material.
 
 ## Email Configuration
@@ -258,7 +285,7 @@ CI/CD means automatic checks and deployment.
 
 For v1:
 
-- GitHub Actions runs checks on push to `main`.
+- GitHub Actions runs checks on pull requests and push to `main`.
 - Vercel deploys from `main`.
 - Supabase migrations are applied manually.
 
@@ -271,6 +298,8 @@ GitHub Actions checks:
 The generated-types check should compare committed TypeScript types against a schema created from committed migrations. It should not depend on the live production Supabase database in v1, because production migrations are still applied manually.
 
 Vercel handles deployment through the GitHub integration.
+
+Protect the `main` branch so pull requests cannot merge until checks pass. Do not include a fake smoke test script. Add a real smoke test only when it starts the app and checks a real health endpoint.
 
 ## How To Modify The Database Safely
 

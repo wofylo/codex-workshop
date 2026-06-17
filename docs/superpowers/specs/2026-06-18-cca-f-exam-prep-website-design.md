@@ -22,7 +22,7 @@ The first release includes the important foundations:
 - Learning quizzes, mock exams, review queue, progress, and leaderboard.
 - Optional premium AI features through Siraya-compatible API environment variables.
 - Optional free email provider for approval/rejection notifications.
-- GitHub Actions lightweight checks on `main`.
+- GitHub Actions lightweight checks on pull requests and `main`.
 
 The first release does not include:
 
@@ -59,6 +59,8 @@ Security boundary:
 ### Environments
 
 Use one Supabase environment for v1. Choose Vercel and Supabase regions close to Taiwan/Asia if available.
+
+Vercel preview deployments are disabled for v1 unless a separate preview Supabase project is created. Preview deployments pointed at production Supabase would mix test and production users, questions, progress, and admin actions. If previews are later enabled against production data by explicit choice, the preview UI must clearly label that it uses production data and must block admin mutations outside the production deployment.
 
 ## Authentication And Authorization
 
@@ -104,6 +106,16 @@ There are two separate gates:
 
 The app grants full access only when the user is email-confirmed if confirmation is enabled, approved, and not soft-deleted.
 
+Display name rules:
+
+- Required at sign-up.
+- Trimmed before storage.
+- Length: 3-40 characters.
+- Allowed characters: letters, numbers, spaces, underscores, and hyphens.
+- Case-insensitive uniqueness among non-deleted users.
+- Users cannot change display name in v1.
+- Admins can edit display names for moderation.
+
 ### Student Learning
 
 The default interface language is English. Users can switch the app and study content between English and Chinese.
@@ -124,12 +136,25 @@ Mock exams should follow the real CCA-F exam as closely as the available informa
 V1 behavior:
 
 - 60 questions.
-- Timed mode matching the real exam duration.
+- Duration: 120 minutes.
 - Domain-weighted question selection.
+- Scoring: one point per correct answer, no penalty for wrong answers, percentage score = correct answers / 60.
 - Explanations only after finishing.
 - Users can visually pause/resume, but the timed exam deadline keeps counting while away.
 - Unfinished attempts remain until completed.
 - Users may retake mock exams.
+
+Domain-weighted selection for 60 questions:
+
+| Domain | Weight | Questions |
+|---|---:|---:|
+| Agentic Architecture & Orchestration | 27% | 16 |
+| Claude Code Configuration | 20% | 12 |
+| Tool Design & MCP Integration | 18% | 11 |
+| Prompt Engineering | 18% | 11 |
+| Context Management | 17% | 10 |
+
+Each mock attempt creates an ordered frozen question list at start. Question order and answer choice order are stored for that attempt and do not change if the shared question bank changes later.
 
 ### Public Progress And Leaderboard
 
@@ -147,6 +172,17 @@ Users cannot opt out in v1, so explicit consent is required during sign-up befor
 
 ### Tables
 
+All application tables use `uuid primary key default gen_random_uuid()` unless a different key is specified. User-owned rows reference `profiles(id)` rather than `auth.users(id)` directly, except `profiles.id`.
+
+Use Postgres enum types for controlled fields:
+
+- `app_role`: `student`, `admin`
+- `approval_status`: `pending`, `approved`, `rejected`
+- `question_status`: `draft`, `pending_review`, `active`, `disabled`
+- `quiz_mode`: `learning`, `mock_exam`
+- `quiz_attempt_status`: `in_progress`, `completed`, `abandoned`, `expired`
+- `ai_feature`: `question_generation`, `tutor`, `translation`
+
 #### `profiles`
 
 One row per Supabase Auth user.
@@ -155,8 +191,9 @@ Key fields:
 
 - `id uuid primary key references auth.users(id)`
 - `display_name text not null`
-- `role text not null default 'student'`
-- `approval_status text not null default 'pending'`
+- `display_name_normalized text not null`
+- `role app_role not null default 'student'`
+- `approval_status approval_status not null default 'pending'`
 - `is_premium boolean not null default false`
 - `is_deleted boolean not null default false`
 - `approved_at timestamptz`
@@ -167,6 +204,17 @@ Key fields:
 - `deleted_by uuid references profiles(id)`
 - `created_at timestamptz not null default now()`
 - `updated_at timestamptz not null default now()`
+
+Constraints and indexes:
+
+- `check (char_length(display_name) between 3 and 40)`
+- unique partial index on `display_name_normalized` where `is_deleted = false`
+- `approved_by`, `rejected_by`, and `deleted_by` reference `profiles(id) on delete set null`
+
+Admin safety:
+
+- Dashboard mutations must prevent an admin from soft-deleting, demoting, or rejecting themselves.
+- Database triggers or RPCs must prevent removing the last active approved admin.
 
 #### `app_settings`
 
@@ -192,9 +240,42 @@ This supports type-safe reads and updates from application code.
 
 Stores CCA-F domains, display labels, exam weights, and sort order.
 
+Suggested fields:
+
+- `id uuid primary key default gen_random_uuid()`
+- `slug text not null unique`
+- `title_en text not null`
+- `title_zh text not null`
+- `exam_weight numeric not null`
+- `mock_question_count integer not null`
+- `sort_order integer not null unique`
+
+Constraints:
+
+- `check (exam_weight > 0)`
+- `check (mock_question_count > 0)`
+
 #### `study_sections`
 
 Stores sections inside each domain and links them to Markdown source paths.
+
+Suggested fields:
+
+- `id uuid primary key default gen_random_uuid()`
+- `domain_id uuid not null references study_domains(id) on delete cascade`
+- `slug text not null`
+- `title_en text not null`
+- `title_zh text not null`
+- `source_path_en text not null`
+- `source_path_zh text not null`
+- `heading_anchor_en text`
+- `heading_anchor_zh text`
+- `sort_order integer not null`
+
+Constraints:
+
+- unique `(domain_id, slug)`
+- unique `(domain_id, sort_order)`
 
 #### `questions`
 
@@ -223,12 +304,28 @@ Suggested fields:
 - `domain_id uuid not null`
 - `section_id uuid`
 - `source_reference text`
-- `status text not null default 'draft'`
+- `status question_status not null default 'draft'`
 - `generated_by_user_id uuid`
 - `generated_at timestamptz`
 - `generated_model text`
 - `reviewed_by uuid references profiles(id)`
 - `reviewed_at timestamptz`
+
+Required constraints:
+
+- `domain_id references study_domains(id) on delete restrict`
+- `section_id references study_sections(id) on delete set null`
+- `generated_by_user_id references profiles(id) on delete set null`
+- `reviewed_by references profiles(id) on delete set null`
+- `correct_choice_index between 0 and 3`
+- `jsonb_array_length(choices_en) = 4`
+- `choices_zh is null or jsonb_array_length(choices_zh) = 4`
+- If `status = active`, reviewed AI-generated questions must have `reviewed_by` and `reviewed_at`.
+
+Deletion behavior:
+
+- Prefer `status = disabled` for questions that have attempts.
+- Hard delete is allowed only for questions with no attempt references.
 
 #### `quiz_attempts`
 
@@ -237,29 +334,69 @@ Stores learning quiz and mock exam attempts.
 Key fields:
 
 - `user_id uuid not null`
-- `mode text not null`: learning or mock exam.
-- `status text not null`: in_progress, completed, abandoned, or expired.
+- `mode quiz_mode not null`: learning or mock exam.
+- `status quiz_attempt_status not null default 'in_progress'`: in_progress, completed, abandoned, or expired.
 - `language text not null`
 - `started_at timestamptz not null`
 - `completed_at timestamptz`
 - `timer_deadline timestamptz`
 - `score numeric`
 
+Required constraints:
+
+- `user_id references profiles(id) on delete cascade`
+- `language in ('en', 'zh')`
+- `score is null or (score >= 0 and score <= 100)`
+- For mock exams, `timer_deadline` is required and equals `started_at + interval '120 minutes'`.
+- For completed attempts, `completed_at` and `score` are required.
+
+#### `quiz_attempt_questions`
+
+Stores the frozen ordered question set for each attempt.
+
+Key fields:
+
+- `id uuid primary key default gen_random_uuid()`
+- `attempt_id uuid not null references quiz_attempts(id) on delete cascade`
+- `question_id uuid not null references questions(id) on delete restrict`
+- `position integer not null`
+- `choice_order integer[] not null`
+- `question_snapshot jsonb not null`
+- `correct_choice_index_snapshot integer not null`
+- `created_at timestamptz not null default now()`
+
+Required constraints:
+
+- unique `(attempt_id, position)`
+- unique `(attempt_id, question_id)`
+- `position >= 1`
+- `array_length(choice_order, 1) = 4`
+- `correct_choice_index_snapshot between 0 and 3`
+
+For mock exams, exactly 60 `quiz_attempt_questions` rows are created at attempt start. For learning quizzes, the count depends on the selected quiz size.
+
 #### `quiz_attempt_answers`
 
-Stores per-question answers and a snapshot of the question state at answer time.
+Stores per-question answers.
 
 Key fields:
 
 - `attempt_id uuid not null`
 - `question_id uuid not null`
-- `question_snapshot jsonb not null`
+- `attempt_question_id uuid not null`
 - `selected_choice_index integer`
-- `correct_choice_index integer not null`
 - `is_correct boolean`
 - `answered_at timestamptz`
 
-The snapshot prevents old attempt scoring from changing if an admin later edits the question text, choices, explanation, or correct answer.
+Required constraints:
+
+- `attempt_id references quiz_attempts(id) on delete cascade`
+- `attempt_question_id references quiz_attempt_questions(id) on delete cascade`
+- `question_id references questions(id) on delete restrict`
+- unique `(attempt_question_id)`
+- `selected_choice_index between 0 and 3`
+
+Scoring uses the snapshot stored in `quiz_attempt_questions`, not the mutable current question row. This prevents old attempt scoring from changing if an admin later edits the question text, choices, explanation, or correct answer.
 
 #### `review_queue`
 
@@ -273,6 +410,13 @@ Key fields:
 - `added_at timestamptz not null default now()`
 - `resolved_at timestamptz`
 
+Required constraints:
+
+- `user_id references profiles(id) on delete cascade`
+- `question_id references questions(id) on delete cascade`
+- `source_attempt_id references quiz_attempts(id) on delete set null`
+- unique `(user_id, question_id)` where `resolved_at is null`
+
 #### `ai_usage_events`
 
 Stores one row per AI action for daily premium limit enforcement and admin usage counts.
@@ -280,9 +424,13 @@ Stores one row per AI action for daily premium limit enforcement and admin usage
 Key fields:
 
 - `user_id uuid not null`
-- `feature text not null`: question generation or tutor.
+- `feature ai_feature not null`: question generation, tutor, or translation.
 - `created_at timestamptz not null default now()`
 - `model text`
+
+Required constraints:
+
+- `user_id references profiles(id) on delete cascade`
 
 Do not store temporary AI tutor chat history in v1.
 
@@ -290,11 +438,12 @@ Daily limit enforcement must use a database RPC, not a client-side count followe
 
 RPC behavior:
 
-1. Accept `user_id`, `feature`, and optional model metadata.
+1. Accept `feature` and optional model metadata.
 2. Lock the relevant user/settings scope or otherwise perform an atomic check-and-insert in one transaction.
-3. Count usage since the start of the current UTC day.
-4. Insert a usage row only if the user is premium and still under the configured daily limit.
-5. Return allowed/denied plus remaining count.
+3. Derive the user from `auth.uid()` inside the function; never accept a caller-supplied `user_id`.
+4. Count usage since the start of the current UTC day.
+5. Insert a usage row only if the authenticated user is premium, approved, not soft-deleted, and still under the configured daily limit.
+6. Return allowed/denied plus remaining count.
 
 Use UTC day boundaries for v1. A later phase can add per-user timezone-aware limits.
 
@@ -302,7 +451,17 @@ Use UTC day boundaries for v1. A later phase can add per-user timezone-aware lim
 
 Records sensitive admin actions.
 
-Examples:
+Key fields:
+
+- `id uuid primary key default gen_random_uuid()`
+- `actor_admin_id uuid references profiles(id) on delete set null`
+- `action text not null`
+- `target_table text`
+- `target_id uuid`
+- `metadata jsonb not null default '{}'::jsonb`
+- `created_at timestamptz not null default now()`
+
+Actions to record:
 
 - Approve user.
 - Reject user.
@@ -311,23 +470,43 @@ Examples:
 - Toggle premium.
 - Change AI daily limit.
 - Create/edit/disable/delete question.
+- Publish/reject AI-generated question.
+- Edit public display name.
+
+Audit rows are append-only. Admins can read them; normal users cannot.
 
 ### RLS Direction
 
 Enable Row Level Security on user data tables.
 
+Helper functions:
+
+- `public.current_profile_id()` returns `auth.uid()`.
+- `public.is_approved_active_user()` returns true when `auth.uid()` has a profile with `approval_status = approved` and `is_deleted = false`.
+- `public.is_admin()` returns true when `auth.uid()` has a profile with `role = admin`, `approval_status = approved`, and `is_deleted = false`.
+- `public.is_premium_user()` returns true when the user is approved, active, and premium.
+
+These helper functions should be `security definer`, set a fixed `search_path`, and return false when `auth.uid()` is null.
+
 Policy direction:
 
-- Users can read limited own profile fields.
-- Users can read active shared questions and public study metadata.
-- Users can read/write only their own attempts, answers, review queue, and AI usage records.
-- Users can read public leaderboard summaries for approved, non-deleted users.
-- Admins can manage profiles, settings, questions, and progress views.
-- Soft-deleted users are blocked by app logic after login and excluded from public views.
+- `profiles`: users can read their own profile; approved active users can read public profile fields for approved active users; admins can manage profiles only through controlled server actions/RPCs.
+- `app_settings`: approved active users can read non-secret settings; only admins can update.
+- `study_domains` and `study_sections`: approved active users can read; admins can manage.
+- `questions`: approved active users can read only `active` questions; admins can manage all statuses.
+- `quiz_attempts`, `quiz_attempt_questions`, `quiz_attempt_answers`, `review_queue`, and `ai_usage_events`: users can read/write only their own rows and only when `is_approved_active_user()` is true; admins can read for dashboards.
+- Public leaderboard view: approved active users can read summary rows for approved, non-deleted users only.
+- Soft-deleted users are denied by RLS helper functions, not only blocked by app UI or middleware.
 
 Use server-side checks for admin pages and privileged mutations. RLS remains the database safety net.
 
 Use the service role key only in server-only code paths that need privileged operations, such as admin actions, profile bootstrap, AI/email side effects, or controlled RPC calls. Never expose it to client components.
+
+Use database functions or triggers for high-risk admin mutations:
+
+- Prevent deleting, demoting, or rejecting the current admin user.
+- Prevent deleting, demoting, or rejecting the last active approved admin.
+- Record an `admin_audit_events` row for each sensitive mutation.
 
 ## Study Content
 
@@ -350,6 +529,18 @@ Current source files include:
 
 V1 content changes happen by editing Markdown files in GitHub and redeploying. A later phase can add internet pull/update workflows.
 
+Markdown rendering pipeline:
+
+1. Load Markdown from known repo file paths only.
+2. Parse Markdown server-side with a maintained Markdown/MDX pipeline.
+3. Sanitize rendered HTML or use React-rendered Markdown components that escape raw HTML by default.
+4. Disable raw HTML in Markdown unless explicitly sanitized.
+5. Allow only expected elements such as headings, paragraphs, lists, links, tables, inline code, and code blocks.
+6. Add `rel="noopener noreferrer"` to external links.
+7. Route structure: `/study/[domainSlug]` for domain pages and `/study/[domainSlug]/[sectionSlug]` for section pages.
+
+Do not render arbitrary user-submitted Markdown in v1.
+
 ## Quiz And Question Behavior
 
 Question format:
@@ -368,9 +559,10 @@ Mock exam behavior:
 
 - Follow real CCA-F format as closely as possible.
 - 60 questions.
-- Domain-weighted selection.
-- Timed.
+- Domain-weighted selection using the fixed per-domain counts in this spec.
+- Timed for 120 minutes.
 - Explanations after completion.
+- Frozen attempt question list and answer choice order.
 
 Question management:
 
@@ -465,7 +657,7 @@ Behavior:
 
 ### GitHub Actions
 
-Run on push to `main` for v1.
+Run on pull requests and push to `main` for v1.
 
 Checks:
 
@@ -473,7 +665,14 @@ Checks:
 - `pnpm typecheck`
 - Generated Supabase types are current for the checked-in migration-derived schema.
 
-Include a smoke test script stub in `package.json` for future expansion, but do not require real tests until they exist.
+Do not include a fake smoke test stub. Either omit smoke tests until implemented or add a real smoke test that starts the Next.js app and checks a lightweight `/api/health` endpoint.
+
+Branch protection:
+
+- Require GitHub Actions checks to pass before merging to `main`.
+- Require pull requests for changes to `main`; no direct pushes.
+- Vercel production deploys from `main` only after merge.
+- This prevents broken code from being merged and deployed before CI catches it.
 
 Type freshness check design:
 
@@ -512,6 +711,7 @@ Create a separate beginner guide covering:
 - How to modify Markdown content.
 - How to modify database schema safely.
 - How CI/CD works in this project.
+- Why preview deployments are disabled unless a separate preview Supabase project exists.
 - Later automation path.
 
 ## Error Handling
@@ -529,6 +729,21 @@ Expected error states:
 - Timed exam expired.
 
 The UI should explain what happened in plain language without exposing secrets or internal stack traces.
+
+Error ownership:
+
+| Error state | Detection layer | Behavior |
+|---|---|---|
+| Pending approval | middleware/server route guard | redirect to pending page, HTTP 200 |
+| Email not confirmed | middleware/server route guard | redirect to verify-email page, HTTP 200 |
+| Rejected account | middleware/server route guard | redirect to rejected page, HTTP 200 |
+| Soft-deleted account | middleware/server route guard plus RLS helpers | redirect to deactivated page, HTTP 200 |
+| Non-admin admin route access | middleware/server action plus RLS | return 404 or redirect to app home; do not leak admin data |
+| AI not configured | server action | return typed disabled result, HTTP 200 |
+| AI daily limit reached | database RPC | return typed limit result, HTTP 429 for API route or inline UI state for server action |
+| Email provider not configured | server action | skip send, record audit/status, HTTP 200 |
+| Not enough active questions | server action/RPC | block attempt creation with actionable UI message |
+| Timed exam expired | server action/RPC when loading/submitting attempt | mark attempt `expired`, show expired state |
 
 ## Testing And Verification
 
