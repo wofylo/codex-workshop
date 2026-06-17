@@ -23,6 +23,7 @@
 - GitHub Actions checks run on pull requests and push to `main`.
 - Do not include a fake smoke test. Use a real `/api/health` endpoint check.
 - The foundation phase does not implement database migrations, RLS policies, auth pages, study pages, quiz flows, admin pages, or AI features.
+- Visual direction: Dark Scholarly Command Center. Use dark theme only for v1, near-black background, charcoal panels, muted slate text, soft borders, and restrained gold accents for primary actions, selected state, progress, score, premium, and focus indicators.
 
 ---
 
@@ -186,34 +187,39 @@ Write this exact file:
 
 ```tsx
 const foundationItems = [
-  "Next.js App Router",
-  "TypeScript",
-  "Tailwind CSS",
-  "Supabase client boundary",
-  "GitHub Actions checks",
-  "Vercel production deployment",
+  { label: "Next.js App Router", detail: "Application shell" },
+  { label: "TypeScript", detail: "Strict project contracts" },
+  { label: "Tailwind CSS", detail: "Dark/gold design tokens" },
+  { label: "Supabase boundary", detail: "Client and server split" },
+  { label: "GitHub Actions", detail: "PR and main checks" },
+  { label: "Vercel", detail: "Production deploy path" },
 ];
 
 export default function Home() {
   return (
-    <main className="min-h-svh bg-background text-foreground">
-      <section className="mx-auto flex min-h-svh w-full max-w-5xl flex-col justify-center px-6 py-16">
-        <p className="text-sm font-medium text-muted-foreground">CCA-F Exam Prep</p>
-        <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-          Foundation ready for the study platform.
-        </h1>
-        <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
-          This first slice establishes the deployable app shell. Auth, database
-          migrations, study pages, quizzes, admin tools, and AI features are
-          implemented in follow-up plans.
-        </p>
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <main className="min-h-svh bg-[#070706] text-[#f4efe2]">
+      <section className="mx-auto flex min-h-svh w-full max-w-6xl flex-col justify-center px-6 py-16">
+        <div className="max-w-3xl">
+          <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#c8a756]">
+            CCA-F Exam Prep
+          </p>
+          <h1 className="mt-5 text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
+            A dark scholarly command center for certification study.
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-[#b8b0a0]">
+            This first slice establishes the deployable app shell. Auth,
+            database migrations, study pages, quizzes, admin tools, and AI
+            features are implemented in follow-up plans.
+          </p>
+        </div>
+        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {foundationItems.map((item) => (
             <div
-              key={item}
-              className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-card-foreground"
+              key={item.label}
+              className="rounded-lg border border-[#2d2a22] bg-[#12110f] px-4 py-4 shadow-[0_20px_80px_rgba(0,0,0,0.28)]"
             >
-              {item}
+              <div className="text-sm font-medium text-[#f4efe2]">{item.label}</div>
+              <div className="mt-2 text-sm text-[#8f8878]">{item.detail}</div>
             </div>
           ))}
         </div>
@@ -223,7 +229,80 @@ export default function Home() {
 }
 ```
 
-- [ ] **Step 7: Ensure `package.json` has required scripts**
+- [ ] **Step 7: Replace `src/app/globals.css` with dark/gold theme tokens**
+
+Write this exact file:
+
+```css
+@import "tailwindcss";
+
+:root {
+  --background: #070706;
+  --foreground: #f4efe2;
+  --card: #12110f;
+  --card-foreground: #f4efe2;
+  --popover: #12110f;
+  --popover-foreground: #f4efe2;
+  --primary: #c8a756;
+  --primary-foreground: #090806;
+  --secondary: #1b1915;
+  --secondary-foreground: #e8dcc3;
+  --muted: #191713;
+  --muted-foreground: #9a9281;
+  --accent: #2a2415;
+  --accent-foreground: #f2d991;
+  --destructive: #ef4444;
+  --destructive-foreground: #fff7ed;
+  --border: #2d2a22;
+  --input: #2d2a22;
+  --ring: #c8a756;
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  min-height: 100svh;
+  background:
+    radial-gradient(circle at top left, rgba(200, 167, 86, 0.16), transparent 34rem),
+    linear-gradient(180deg, #090806 0%, var(--background) 34rem);
+  color: var(--foreground);
+}
+
+::selection {
+  background: rgba(200, 167, 86, 0.32);
+  color: var(--foreground);
+}
+```
+
+- [ ] **Step 8: Ensure `package.json` has required scripts**
 
 Run:
 
@@ -241,7 +320,7 @@ Expected:
 No command errors.
 ```
 
-- [ ] **Step 8: Install dependencies**
+- [ ] **Step 9: Install dependencies**
 
 Run:
 
@@ -255,7 +334,7 @@ Expected:
 Done
 ```
 
-- [ ] **Step 9: Run foundation checks**
+- [ ] **Step 10: Run foundation checks**
 
 Run:
 
@@ -270,7 +349,7 @@ Expected:
 Both commands exit 0.
 ```
 
-- [ ] **Step 10: Commit the scaffold**
+- [ ] **Step 11: Commit the scaffold**
 
 Run:
 
@@ -765,7 +844,7 @@ Commit created.
 Run:
 
 ```powershell
-pnpm dlx shadcn@latest init --yes --base-color slate
+pnpm dlx shadcn@latest init --yes --base-color neutral
 ```
 
 Expected:
@@ -780,6 +859,7 @@ Run:
 
 ```powershell
 pnpm dlx shadcn@latest add button card badge separator
+pnpm add lucide-react
 ```
 
 Expected:
@@ -797,6 +877,7 @@ Write this exact file:
 
 ```tsx
 import { Badge } from "@/components/ui/badge";
+import { BookOpenCheck, Crown, Gauge, ShieldCheck } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -807,42 +888,63 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 const foundationItems = [
-  "Next.js App Router",
-  "TypeScript",
-  "Tailwind CSS",
-  "Supabase client boundary",
-  "GitHub Actions checks",
-  "Vercel production deployment",
+  {
+    label: "Study cockpit",
+    detail: "Dark workspace for domain progress and review focus.",
+    icon: BookOpenCheck,
+  },
+  {
+    label: "Deployment path",
+    detail: "GitHub Actions and Vercel production branch are defined.",
+    icon: Gauge,
+  },
+  {
+    label: "Security boundary",
+    detail: "Public and server-only Supabase clients are separated.",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Premium-ready",
+    detail: "Gold accent system is reserved for premium and key actions.",
+    icon: Crown,
+  },
 ];
 
 export default function Home() {
   return (
     <main className="min-h-svh bg-background text-foreground">
-      <section className="mx-auto flex min-h-svh w-full max-w-5xl flex-col justify-center px-6 py-16">
-        <Badge className="w-fit" variant="secondary">
+      <section className="mx-auto flex min-h-svh w-full max-w-6xl flex-col justify-center px-6 py-16">
+        <Badge className="w-fit border-primary/40 bg-primary/10 text-primary" variant="outline">
           CCA-F Exam Prep
         </Badge>
         <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-          Foundation ready for the study platform.
+          A dark scholarly command center for certification study.
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
           This first slice establishes the deployable app shell. Auth, database
           migrations, study pages, quizzes, admin tools, and AI features are
           implemented in follow-up plans.
         </p>
-        <Separator className="my-8" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {foundationItems.map((item) => (
-            <Card key={item}>
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-base">{item}</CardTitle>
-                <CardDescription>Foundation capability is wired.</CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                Ready for the next implementation phase.
-              </CardContent>
-            </Card>
-          ))}
+        <Separator className="my-8 bg-border" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {foundationItems.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <Card key={item.label} className="rounded-lg border-border bg-card/92">
+                <CardHeader className="space-y-3">
+                  <div className="flex size-9 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary">
+                    <Icon className="size-4" aria-hidden="true" />
+                  </div>
+                  <CardTitle className="text-base">{item.label}</CardTitle>
+                  <CardDescription>{item.detail}</CardDescription>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">
+                  Ready for the next implementation phase.
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </section>
     </main>

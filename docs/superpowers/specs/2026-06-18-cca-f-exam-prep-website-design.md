@@ -56,6 +56,22 @@ Security boundary:
 - Student area: bilingual study guides, learning quizzes, mock exams, review queue, progress, leaderboard, premium AI tools.
 - Admin area: approve/reject/restore users, soft-delete users, toggle premium, manage questions, view progress, configure AI daily limit.
 
+### Visual Direction
+
+The v1 interface uses a modern dark theme with restrained gold accents. The design tone is **Dark Scholarly Command Center**: serious, polished, focused, and optimized for repeated study sessions and exam-prep workflows.
+
+Visual rules:
+
+- Dark theme only for v1.
+- Base palette: near-black page background, charcoal panels, muted slate text, soft borders, and gold accents.
+- Gold is an accent, not the dominant color. Use it for primary actions, selected navigation, focus rings, score highlights, premium markers, progress emphasis, and important badges.
+- Avoid purple/blue gradient SaaS styling and avoid one-note gold/brown dominance.
+- Use shadcn/ui with customized dark/gold CSS variables.
+- Cards use restrained borders and `8px` radius or less.
+- Layouts prioritize scanning and repeated use: side navigation, compact cards, readable tables, quiz panels, and clear state indicators.
+- Typography should be clean and serious. Avoid playful, decorative, or marketing-style exam-site presentation.
+- The first screen after login should feel like the actual study cockpit, not a landing page.
+
 ### Environments
 
 Use one Supabase environment for v1. Choose Vercel and Supabase regions close to Taiwan/Asia if available.
