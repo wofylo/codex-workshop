@@ -45,6 +45,11 @@ The first release does not include:
 - AI provider: optional Siraya API, assumed OpenAI-compatible through base URL plus API key.
 - Email provider: optional free provider such as Resend if configured; otherwise approval/rejection status appears in-app.
 
+Security boundary:
+
+- Public browser code may use only public environment variables, such as `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- `SUPABASE_SERVICE_ROLE_KEY`, AI keys, and email provider keys must stay server-only and must never be imported into client components or exposed in browser bundles.
+
 ### App Areas
 
 - Public/auth area: sign up, login, pending approval, rejected status, deleted/deactivated status.
@@ -83,13 +88,21 @@ The first admin is created manually in Supabase for v1.
 
 ### Sign Up
 
-1. User enters email, password, and display name.
+1. User enters email, password, display name, and accepts that display name, progress summary, and leaderboard score are public to approved users.
 2. Supabase creates the auth user.
-3. App creates a `profiles` row with `approval_status = pending`.
-4. User sees a pending approval page.
-5. Admin approves or rejects the request.
-6. If a free email provider is configured, the app sends an approval/rejection email.
-7. If email is not configured, the user sees status when logging in.
+3. Supabase email confirmation runs if enabled for the project.
+4. App creates a `profiles` row with `approval_status = pending`.
+5. User sees a pending approval page. If email confirmation is required and not complete, the page also explains that email verification is still needed.
+6. Admin approves or rejects the request.
+7. If a free email provider is configured, the app sends an approval/rejection email.
+8. If email is not configured, the user sees status when logging in.
+
+There are two separate gates:
+
+- Supabase Auth email confirmation, represented by Supabase Auth user state.
+- Application approval, represented by `profiles.approval_status`.
+
+The app grants full access only when the user is email-confirmed if confirmation is enabled, approved, and not soft-deleted.
 
 ### Student Learning
 
@@ -128,7 +141,7 @@ Public fields:
 - Public progress summary.
 - Leaderboard score.
 
-Users cannot opt out in v1. The leaderboard ranks by best mock exam score.
+Users cannot opt out in v1, so explicit consent is required during sign-up before the account request is submitted. The leaderboard ranks by best mock exam score.
 
 ## Database Design
 
@@ -157,11 +170,23 @@ Key fields:
 
 #### `app_settings`
 
-Stores admin-configurable app settings.
+Stores singleton admin-configurable app settings.
 
-Initial setting:
+Use a one-row table with a fixed primary key so the app has one typed settings record instead of arbitrary key/value strings.
 
-- `daily_ai_limit` default `25`.
+Suggested fields:
+
+- `id boolean primary key default true`
+- `daily_ai_limit integer not null default 25`
+- `created_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+
+Constraint:
+
+- `check (id = true)`
+- `check (daily_ai_limit >= 0)`
+
+This supports type-safe reads and updates from application code.
 
 #### `study_domains`
 
@@ -183,7 +208,7 @@ Key behavior:
 - Optional section tag.
 - Optional source/reference field.
 - Bilingual text and explanation when available.
-- `status`: `active` or `disabled`.
+- `status`: `draft`, `pending_review`, `active`, or `disabled`.
 - AI metadata when generated.
 
 Suggested fields:
@@ -198,10 +223,12 @@ Suggested fields:
 - `domain_id uuid not null`
 - `section_id uuid`
 - `source_reference text`
-- `status text not null default 'active'`
+- `status text not null default 'draft'`
 - `generated_by_user_id uuid`
 - `generated_at timestamptz`
 - `generated_model text`
+- `reviewed_by uuid references profiles(id)`
+- `reviewed_at timestamptz`
 
 #### `quiz_attempts`
 
@@ -211,7 +238,7 @@ Key fields:
 
 - `user_id uuid not null`
 - `mode text not null`: learning or mock exam.
-- `status text not null`: in progress or completed.
+- `status text not null`: in_progress, completed, abandoned, or expired.
 - `language text not null`
 - `started_at timestamptz not null`
 - `completed_at timestamptz`
@@ -220,15 +247,19 @@ Key fields:
 
 #### `quiz_attempt_answers`
 
-Stores per-question answers.
+Stores per-question answers and a snapshot of the question state at answer time.
 
 Key fields:
 
 - `attempt_id uuid not null`
 - `question_id uuid not null`
+- `question_snapshot jsonb not null`
 - `selected_choice_index integer`
+- `correct_choice_index integer not null`
 - `is_correct boolean`
 - `answered_at timestamptz`
+
+The snapshot prevents old attempt scoring from changing if an admin later edits the question text, choices, explanation, or correct answer.
 
 #### `review_queue`
 
@@ -254,6 +285,18 @@ Key fields:
 - `model text`
 
 Do not store temporary AI tutor chat history in v1.
+
+Daily limit enforcement must use a database RPC, not a client-side count followed by insert.
+
+RPC behavior:
+
+1. Accept `user_id`, `feature`, and optional model metadata.
+2. Lock the relevant user/settings scope or otherwise perform an atomic check-and-insert in one transaction.
+3. Count usage since the start of the current UTC day.
+4. Insert a usage row only if the user is premium and still under the configured daily limit.
+5. Return allowed/denied plus remaining count.
+
+Use UTC day boundaries for v1. A later phase can add per-user timezone-aware limits.
 
 #### `admin_audit_events`
 
@@ -283,6 +326,8 @@ Policy direction:
 - Soft-deleted users are blocked by app logic after login and excluded from public views.
 
 Use server-side checks for admin pages and privileged mutations. RLS remains the database safety net.
+
+Use the service role key only in server-only code paths that need privileged operations, such as admin actions, profile bootstrap, AI/email side effects, or controlled RPC calls. Never expose it to client components.
 
 ## Study Content
 
@@ -330,8 +375,9 @@ Mock exam behavior:
 Question management:
 
 - Admins create, edit, disable, and delete questions in the admin dashboard.
-- AI-generated questions go live immediately into the shared question bank.
-- Admins can clean up AI-generated questions after publication.
+- AI-generated questions enter `pending_review` by default.
+- Admins review, edit if needed, and publish AI-generated questions by changing status to `active`.
+- Learning quizzes and mock exams draw only from `active` questions.
 
 ## AI Behavior
 
@@ -356,13 +402,14 @@ Daily limit:
 - Shared across AI question generation and AI tutor.
 - Default `25` actions per premium user per day.
 - Admin-configurable in the dashboard.
-- Enforced through `ai_usage_events`.
+- Enforced through an atomic database RPC that writes to `ai_usage_events`.
 
 Question generation:
 
 - Premium user chooses domain, section, and number of questions.
 - AI generates English questions first.
-- Generated questions go live immediately into the shared bank.
+- Generated questions are saved as `pending_review` shared-bank drafts.
+- Admins publish reviewed generated questions by setting them to `active`.
 - Chinese translation is generated automatically when needed and then stored.
 
 AI tutor:
@@ -373,6 +420,17 @@ AI tutor:
 - Does not guess.
 - If the answer is not supported by the study material, it politely says it does not know from the current study material.
 - Chat history is temporary and disappears after the session.
+
+Minimal grounding architecture:
+
+1. Load the current English and Chinese Markdown study-guide files into server-side searchable chunks at build time or startup.
+2. Store chunk metadata: source file, heading path, language, and text.
+3. For each tutor question, retrieve a small set of relevant chunks from the study-guide corpus before calling the model.
+4. Send only those chunks plus strict instructions to the model.
+5. Require the model to answer only from retrieved chunks.
+6. If no retrieved chunk supports the answer, return the polite "I don't know from the current study material" response.
+
+V1 can use simple lexical search over local Markdown chunks. Vector embeddings can be a later improvement if lexical retrieval is not good enough.
 
 ## Email Behavior
 
@@ -413,9 +471,16 @@ Checks:
 
 - `pnpm lint`
 - `pnpm typecheck`
-- Generated Supabase types are current.
+- Generated Supabase types are current for the checked-in migration-derived schema.
 
 Include a smoke test script stub in `package.json` for future expansion, but do not require real tests until they exist.
+
+Type freshness check design:
+
+- CI must not depend on the live production Supabase database for v1.
+- CI should create or reset a local Supabase/Postgres schema from checked-in migrations, generate TypeScript types from that local schema, and compare the result with the committed generated types.
+- If local Supabase is too heavy for the first implementation pass, this check must be staged behind a documented script and not represented as production-DB verification.
+- The goal is to prove committed types match committed migrations, not to prove production has already been manually migrated.
 
 ### Supabase Migrations
 

@@ -90,6 +90,7 @@ Rules:
 - Put variable names in `.env.example`.
 - Put real values in local `.env.local` and Vercel dashboard.
 - Never commit real secrets to GitHub.
+- Never expose server secrets to browser/client code. `SUPABASE_SERVICE_ROLE_KEY`, AI keys, and email keys must stay server-only.
 - The AI and email variables are optional for v1.
 
 If AI variables are missing, AI features are disabled.
@@ -174,6 +175,14 @@ After that, this admin can approve other users in the dashboard.
 
 New users are pending by default.
 
+During sign-up, users must explicitly accept that their display name, progress summary, and leaderboard score are visible to other approved users. This is required because v1 does not include a leaderboard opt-out.
+
+Supabase email confirmation and app approval are separate:
+
+- Supabase email confirmation proves the email address is valid if confirmation is enabled.
+- App approval is the admin decision stored in the `profiles` table.
+- A user needs both email confirmation, when enabled, and app approval before full access.
+
 Admin choices:
 
 - Approve.
@@ -212,7 +221,7 @@ V1 question rules:
 - English first.
 - Chinese generated or added later.
 
-AI-generated questions go live immediately but admins can edit, disable, or delete them.
+AI-generated questions do not become active immediately. They enter `pending_review`, and admins publish them after review. Quizzes and mock exams use only `active` questions.
 
 ## AI Configuration
 
@@ -228,6 +237,12 @@ Premium users have one shared daily AI limit across:
 - AI tutor.
 
 The default limit is 25 actions per day, configurable in the admin dashboard.
+
+The daily AI limit must be enforced by the database in one atomic operation. The app should not check the count in one request and insert the usage event in another, because two fast requests could otherwise exceed the limit.
+
+The first version uses UTC day boundaries for the daily limit.
+
+The AI tutor should answer from retrieved study-guide chunks only. If the current Markdown study material does not support an answer, it should politely say it does not know from the current study material.
 
 ## Email Configuration
 
@@ -252,6 +267,8 @@ GitHub Actions checks:
 - Lint.
 - Typecheck.
 - Supabase generated types are current.
+
+The generated-types check should compare committed TypeScript types against a schema created from committed migrations. It should not depend on the live production Supabase database in v1, because production migrations are still applied manually.
 
 Vercel handles deployment through the GitHub integration.
 
@@ -297,4 +314,3 @@ Good next steps after v1:
 - Add payment/subscription support for premium.
 - Add OAuth login.
 - Add stronger test coverage.
-
