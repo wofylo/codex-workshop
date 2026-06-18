@@ -17,7 +17,7 @@ export async function signUpAction(formData: FormData) {
   const displayName = validateDisplayName(getString(formData, "display_name"));
 
   if (!email || !password || !displayName.ok || consent !== "on") {
-    redirect("/auth/error");
+    redirect("/auth/error?reason=signup");
   }
 
   const supabase = await createServerSupabaseClient();
@@ -27,7 +27,7 @@ export async function signUpAction(formData: FormData) {
   });
 
   if (error || !data.user) {
-    redirect("/auth/error");
+    redirect("/auth/error?reason=signup");
   }
 
   let profileFailed = false;
@@ -49,7 +49,7 @@ export async function signUpAction(formData: FormData) {
   }
 
   if (profileFailed) {
-    redirect("/auth/error");
+    redirect("/auth/error?reason=profile");
   }
 
   redirect("/auth/pending");
@@ -60,7 +60,7 @@ export async function loginAction(formData: FormData) {
   const password = getString(formData, "password");
 
   if (!email || !password) {
-    redirect("/auth/error");
+    redirect("/auth/error?reason=login");
   }
 
   const supabase = await createServerSupabaseClient();
@@ -70,7 +70,7 @@ export async function loginAction(formData: FormData) {
   });
 
   if (error) {
-    redirect("/auth/error");
+    redirect("/auth/error?reason=login");
   }
 
   redirect("/dashboard");
