@@ -38,6 +38,11 @@ This is the current resume point for continuing the CCA-F exam prep app from Cod
   - `/admin`
 - Signup creates a Supabase Auth user, then creates `public.profiles` using the server-only `SUPABASE_SECRET_KEY`.
 - `/dashboard` requires an authenticated, approved, non-deleted profile.
+- `/dashboard` now shows a static CCA-F study cockpit:
+  - five exam domains in priority order
+  - domain weights, difficulty, question estimates, next actions
+  - English and Traditional Chinese guide file references
+  - admin shortcut for approved admin profiles
 - `/admin` requires an approved admin profile.
 - Auth error page now distinguishes:
   - `reason=login`
@@ -435,7 +440,7 @@ d44e9f97 feat: prepare Supabase deploy foundation
 
 ## Next Recommended Work
 
-1. Verify `/dashboard` and `/admin` in production after logging in with the first admin account.
+1. Verify `/dashboard` and `/admin` in production after the latest deploy from `main`.
 2. Build the admin user-management slice:
    - list pending users
    - approve user
@@ -443,7 +448,7 @@ d44e9f97 feat: prepare Supabase deploy foundation
    - soft-delete user
    - restore user
    - toggle premium
-3. After admin user management, build study dashboard and domain/section reading pages.
+3. After admin user management, build domain/section reading pages.
 
 Keep each slice small and verify with:
 
