@@ -54,7 +54,7 @@ public.profiles = 1
 active approved admins = 1
 ```
 
-The first production account has profile display name `wofy` and is now `admin` / `approved`.
+The first production account has profile display name `wofy`, is now `admin` / `approved`, and has been email-confirmed through the Supabase Admin API.
 
 Earlier, the screenshot showing `Authentication problem` was explained by login before any account existed. Supabase Auth logs showed:
 
@@ -69,6 +69,8 @@ Remaining manual production verification:
 1. Sign in at `https://codex-workshop-two.vercel.app/auth/login` with the first admin account.
 2. Verify `/dashboard` loads.
 3. Verify `/admin` loads.
+
+If sign-in fails with the generic `Sign in failed` page after account creation, check `auth.users.email_confirmed_at` / `confirmed_at`. In this setup, the first account existed and the profile was approved, but login still failed until the auth user was email-confirmed.
 
 ## Verification Commands
 

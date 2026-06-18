@@ -76,9 +76,10 @@ The first admin is created manually for v1.
 
 1. Visit `/auth/sign-up`.
 2. Create the account that should become the first admin.
-3. Open Supabase Table Editor or SQL Editor.
-4. Find the matching row in `public.profiles`.
-5. Set:
+3. Confirm the email address through the verification email, or use the Supabase Admin API/Authentication dashboard to mark the first account as email-confirmed.
+4. Open Supabase Table Editor or SQL Editor.
+5. Find the matching row in `public.profiles`.
+6. Set:
 
 ```sql
 update public.profiles
@@ -90,8 +91,8 @@ set
 where display_name_normalized = lower('YOUR DISPLAY NAME');
 ```
 
-6. Sign in at `/auth/login`.
-7. Verify `/dashboard` loads.
-8. Verify `/admin` loads for the admin account.
+7. Sign in at `/auth/login`.
+8. Verify `/dashboard` loads.
+9. Verify `/admin` loads for the admin account.
 
 Do not soft-delete, reject, or demote the only active approved admin. The database trigger blocks this, but the operational rule is to create a second admin before changing the first one.

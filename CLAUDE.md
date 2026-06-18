@@ -100,7 +100,7 @@ public.profiles = 1
 active approved admins = 1
 ```
 
-First account `wofy` has been promoted to an approved admin. If login fails now, check the credentials, email confirmation policy, and Supabase Auth logs rather than assuming the account is missing.
+First account `wofy` has been promoted to an approved admin and email-confirmed. If login fails now, check the credentials and Supabase Auth logs rather than assuming the account is missing or unapproved.
 
 First-admin SQL:
 
