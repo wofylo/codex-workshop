@@ -1,34 +1,86 @@
 # CCA-F Website Handoff
 
-This document is the resume point for continuing the CCA-F exam prep website later. It summarizes the current repository state, the approved product/design decisions, and the next concrete implementation step.
+This document is the resume point for continuing the CCA-F exam prep website later. It summarizes the current repository state, what was implemented in the foundation phase, important environment notes, and the next concrete implementation step.
 
 ## Current State
 
-### What Is Done
+### Foundation Is Implemented
 
-The project is still in planning mode; no application scaffold has been implemented yet. The repository contains the approved design spec, a beginner setup guide, the seed CCA-F study-guide content, and the foundation implementation plan. The latest design update adds a modern dark theme with restrained gold accents.
+The Next.js foundation has been implemented and merged into `main`. The app now has a deployable root Next.js App Router project with TypeScript, Tailwind CSS, shadcn/ui-compatible components, Supabase client boundaries, environment validation, a real health endpoint, CI workflow, and deployment notes. Database migrations, RLS policies, auth pages, study pages, quiz flows, admin pages, and AI features are still intentionally outside this completed foundation phase.
 
-Use these commands to orient yourself when resuming:
+Use these commands first when resuming. They verify the branch state and show the latest merged foundation commits.
 
 | Description | Command | Expected Result |
 |---|---|---|
-| Check working tree | `git status --short` | No changes listed |
-| View recent commits | `git log --oneline -8` | Latest commit is `749e3bb Add dark gold UI direction` |
-| List project files | `Get-ChildItem -Recurse -File -Depth 3` | Shows `CCA-F/`, `docs/superpowers/specs/`, and `docs/superpowers/plans/` |
+| Check working tree | `git status --short --branch` | Clean tree on `main`; currently shows `main...origin/main [gone]` because the upstream tracking ref is stale |
+| View recent commits | `git log --oneline -10` | Latest commit is `44f8047 fix: make foundation build deterministic` |
+| List app files | `Get-ChildItem -Recurse -File -Depth 3 src,docs,.github | Select-Object FullName` | Shows the Next.js app, deployment guide, and CI workflow |
 
-The recurring warning `unable to access 'C:\Users\WofyLo/.config/git/ignore': Permission denied` has appeared during Git commands. It has not blocked commits so far.
+The branch `cca-f-foundation` was fast-forward merged into `main` and then deleted locally. A separate branch named `feature/foundation` still exists locally, but it was not part of the completed merge workflow.
+
+## Verification State
+
+### Last Verified Commands
+
+The merged `main` branch was verified immediately after the fast-forward merge. The production build needs placeholder public Supabase values when no real local `.env.local` exists because the proxy/env modules validate public Supabase configuration.
+
+Run these checks again after any future change. If build fails because Supabase env values are missing, use the placeholder command below for local build-only verification.
+
+| Description | Command | Expected Result |
+|---|---|---|
+| Lint app | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm lint` | Exits 0 |
+| Typecheck app | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm typecheck` | Exits 0 |
+| Build app with placeholder public env | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; $env:NEXT_PUBLIC_SUPABASE_URL='https://example.supabase.co'; $env:NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='placeholder'; corepack pnpm build` | Exits 0 and lists `/`, `/_not-found`, and `/api/health` |
+| Secret exposure scan | `$paths = @('.env.example') + (Get-ChildItem -Path src -Recurse -Include *.ts,*.tsx | Select-Object -ExpandProperty FullName); Select-String -Path $paths -Pattern "NEXT_PUBLIC_.*SECRET|NEXT_PUBLIC_.*KEY.*SECRET|SUPABASE_SECRET_KEY" -CaseSensitive` | `SUPABASE_SECRET_KEY` appears only in `.env.example`, `src/lib/env/server.ts`, and `src/lib/supabase/admin.ts` |
+
+There is no `test` script yet. For now, lint, typecheck, and build are the foundation verification gate.
+
+## Implemented Foundation
+
+### App Foundation
+
+The app lives at the repository root. It uses the Next.js App Router, React, TypeScript, pnpm, Tailwind CSS v4, and a `src/` directory. The first screen is a dark scholarly command-center status page, not a marketing landing page.
+
+Important implemented files:
+
+| Area | Files | Purpose |
+|---|---|---|
+| App shell | `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css` | Root layout, metadata, dark/gold theme, and foundation status page |
+| Health check | `src/app/api/health/route.ts`, `scripts/check-health.mjs` | Real `/api/health` endpoint and smoke-check script |
+| UI components | `components.json`, `src/lib/utils.ts`, `src/components/ui/*` | shadcn/ui-compatible `Button`, `Card`, `Badge`, and `Separator` foundation |
+| Package/config | `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `tsconfig.json`, `eslint.config.mjs`, `postcss.config.mjs`, `next.config.ts` | App scripts, dependencies, TypeScript, ESLint, Tailwind/PostCSS, and Next config |
+| CI/deployment | `.github/workflows/ci.yml`, `docs/deployment/foundation.md` | GitHub Actions lint/typecheck workflow and Vercel setup notes |
+
+The build was made deterministic by avoiding `next/font/google`, because network-restricted builds cannot fetch Google Fonts. Font stacks are defined in CSS instead.
+
+## Environment And Tooling Notes
+
+### Local Package Manager
+
+The plan uses pnpm. In this environment, `pnpm` was made available through Corepack using a local Corepack cache at `.corepack`, which is ignored by Git. Some installs ran with an escalated environment and used `D:\.pnpm-store`; if pnpm reports an unexpected store location later, run install with the same store or reinstall cleanly.
+
+Use these commands to restore local tooling if needed.
+
+| Description | Command | Expected Result |
+|---|---|---|
+| Activate pnpm with local Corepack cache | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack prepare pnpm@latest --activate` | pnpm is available through Corepack |
+| Install dependencies | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm install` | Dependencies installed |
+| Install with existing escalated store if needed | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm install --store-dir D:\.pnpm-store` | Dependencies linked from existing store |
+
+Ignored local artifacts include `.corepack/`, `.pnpm-store/`, `node_modules/`, `.next/`, `next-env.d.ts`, and TypeScript build info.
 
 ## Important Files
 
 ### Resume Reading Order
 
-Read these files in order before implementing. The design spec is the source of truth, the beginner guide explains operational setup, and the foundation plan is the next executable plan.
+Read these files in order before starting the next implementation phase. The design spec remains the source of truth, while the completed foundation plan explains the boundaries of what was intentionally not implemented.
 
 | Description | Command | Expected Result |
 |---|---|---|
 | Read technical design spec | `Get-Content -Raw docs\superpowers\specs\2026-06-18-cca-f-exam-prep-website-design.md` | Full product, architecture, schema, RLS, AI, CI/CD, and UI direction |
 | Read beginner guide | `Get-Content -Raw docs\superpowers\specs\2026-06-18-cca-f-beginner-setup-guide.md` | Plain-language GitHub, Vercel, Supabase, env, and migration guidance |
-| Read foundation plan | `Get-Content -Raw docs\superpowers\plans\2026-06-18-cca-f-foundation-implementation-plan.md` | Task-by-task implementation plan for the Next.js foundation |
+| Read completed foundation plan | `Get-Content -Raw docs\superpowers\plans\2026-06-18-cca-f-foundation-implementation-plan.md` | Original task-by-task foundation implementation plan |
+| Read deployment guide | `Get-Content -Raw docs\deployment\foundation.md` | Foundation deployment checklist and Vercel preview warning |
 | Confirm seed study content | `Get-ChildItem -File CCA-F | Select-Object Name,Length` | 12 English/Chinese CCA-F Markdown files |
 
 ## Approved Product Decisions
@@ -37,7 +89,7 @@ Read these files in order before implementing. The design spec is the source of 
 
 The website is a multi-user CCA-F exam prep app. Users request access, admins approve them, and approved users study bilingual content, take learning quizzes, take mock exams, track progress, and appear on a public leaderboard. Premium users can use AI features when the Siraya API is configured.
 
-Key scope decisions:
+Key scope decisions remain unchanged:
 
 - Multiple users.
 - Email/password auth only for v1.
@@ -60,7 +112,7 @@ Key scope decisions:
 
 The visual direction is modern, dark, and serious, with restrained gold accents. The app should feel like a focused certification study cockpit, not a marketing landing page. Gold is used for emphasis and state, not as the whole palette.
 
-Visual requirements:
+Visual requirements still apply:
 
 - Dark theme only for v1.
 - Near-black page background.
@@ -70,68 +122,52 @@ Visual requirements:
 - Restrained gold accent for primary actions, selected state, progress, score, premium markers, badges, and focus rings.
 - Avoid purple/blue gradient SaaS styling.
 - Avoid one-note gold/brown dominance.
-- Use shadcn/ui with custom dark/gold CSS variables.
+- Use shadcn/ui-compatible components with custom dark/gold CSS variables.
 - Cards use restrained borders and `8px` radius or less.
 - Layouts prioritize scanning and repeated study use.
 
-## Key Technical Decisions
-
-### Foundation Stack
-
-The foundation plan uses Next.js App Router, React, TypeScript, pnpm, Tailwind CSS, shadcn/ui, Supabase SSR client, Zod, GitHub Actions, and Vercel. Supabase access is split into browser, server, proxy, and admin clients to keep secrets out of client bundles.
-
-Important environment-variable rule:
-
-- Browser code may use only `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
-- `SUPABASE_SECRET_KEY`, AI keys, and email keys are server-only.
-
-### Database And Auth Direction
-
-The implementation-ready spec defines:
-
-- Postgres enums for roles, approval status, question status, quiz mode, attempt status, and AI feature.
-- `profiles` table linked to Supabase Auth users.
-- `app_settings` singleton table.
-- study domain/section tables.
-- question bank with review status.
-- `quiz_attempt_questions` for frozen question snapshots and order.
-- attempt answers linked to attempt questions.
-- review queue.
-- AI usage events.
-- admin audit events.
-- RLS helper functions: `is_admin()`, `is_approved_active_user()`, `is_premium_user()`.
-
 ## Next Step
 
-### Execute The Foundation Plan
+### Create The Database/Auth Implementation Plan
 
-The next action is to execute:
+The foundation phase is complete. The next action should be to create a new implementation plan for the database and authentication foundation, then execute that plan.
 
-`docs/superpowers/plans/2026-06-18-cca-f-foundation-implementation-plan.md`
+Recommended next scope:
 
-This plan scaffolds the app foundation only. It intentionally does not implement database migrations, RLS policies, auth pages, study pages, quiz flows, admin pages, or AI features.
+- Supabase migration files for enums, core tables, constraints, indexes, helper functions, and initial RLS policies.
+- Generated Supabase TypeScript database types.
+- Auth signup/login/logout pages.
+- Profile bootstrap after signup.
+- Pending, rejected, deactivated, and verify-email status pages.
+- Server-side route guards for approved users and admins.
+- First admin manual setup instructions.
 
-When resuming, choose an execution mode:
+Do not start study content rendering, quiz flows, admin question management, AI, or email until the database/auth foundation is implemented and verified.
 
-| Option | Command / Action | Expected Result |
+Suggested next commands and actions:
+
+| Description | Command / Action | Expected Result |
 |---|---|---|
-| Recommended | Say `execute foundation plan subagent-driven` | Use `subagent-driven-development`, one fresh worker per task with review gates |
-| Alternative | Say `execute foundation plan inline` | Use `executing-plans`, implement tasks in this session with checkpoints |
+| Start by writing a plan | Create `docs/superpowers/plans/YYYY-MM-DD-cca-f-database-auth-implementation-plan.md` | A task-by-task plan for migrations, auth pages, route guards, and verification |
+| Use implementation workflow | Say `execute database auth plan inline` or use subagent-driven execution if available | Work proceeds with review gates and verification |
+| Keep secrets server-only | Ensure browser code imports only `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | No secret leakage into client bundles |
 
 ## Commit History
 
 ### Relevant Commits
 
-These commits capture the planning and content state. Use them to verify the handoff matches the repository.
+These commits capture the current foundation state. Use them to verify the handoff matches the repository.
 
 | Commit | Message | Meaning |
 |---|---|---|
+| `44f8047` | `fix: make foundation build deterministic` | Removes network-dependent font fetch and stale shadcn CSS import |
+| `2a241e9` | `ci: add foundation checks` | Adds GitHub Actions lint/typecheck workflow and deployment notes |
+| `670649b` | `feat: add shadcn UI foundation` | Adds shadcn-compatible UI components and componentized foundation page |
+| `554c5f7` | `feat: add health check endpoint` | Adds `/api/health` and `pnpm health:check` |
+| `ab26c98` | `feat: add Supabase client foundation` | Adds env validation and browser/server/admin/proxy Supabase clients |
+| `e32e73e` | `feat: scaffold Next.js foundation` | Adds root Next.js app foundation |
+| `c8aa497` | `Add project handoff document` | Adds the original handoff document |
 | `749e3bb` | `Add dark gold UI direction` | Adds modern dark/gold visual direction to spec and foundation plan |
-| `d7ade92` | `Add CCA-F foundation implementation plan` | Adds the executable foundation plan |
-| `4d3d54d` | `Add CCA-F study guides` | Adds 12 English/Chinese seed Markdown files |
-| `9fde373` | `Make CCA-F design implementation-ready` | Adds concrete RLS, schema, mock exam, CI, Markdown, and error details |
-| `a8f299c` | `Address CCA-F design review risks` | Fixes high-risk design issues from first review |
-| `0079e73` | `Add CCA-F website design docs` | Adds initial technical spec and beginner guide |
 
 ## Do Not Forget
 
