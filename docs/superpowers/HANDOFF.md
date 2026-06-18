@@ -43,7 +43,11 @@ This is the current resume point for continuing the CCA-F exam prep app from Cod
   - domain weights, difficulty, question estimates, next actions
   - English and Traditional Chinese guide file references
   - admin shortcut for approved admin profiles
-- `/admin` requires an approved admin profile.
+- `/admin` requires an approved admin profile and now includes user management v1:
+  - profile list with auth email / email confirmation state
+  - summary counts for total, pending, approved, rejected, deleted, premium
+  - approve, reject, soft-delete, restore, and premium toggle server actions
+  - admin audit event inserts for profile mutations
 - Auth error page now distinguishes:
   - `reason=login`
   - `reason=signup`
@@ -441,14 +445,8 @@ d44e9f97 feat: prepare Supabase deploy foundation
 ## Next Recommended Work
 
 1. Verify `/dashboard` and `/admin` in production after the latest deploy from `main`.
-2. Build the admin user-management slice:
-   - list pending users
-   - approve user
-   - reject user
-   - soft-delete user
-   - restore user
-   - toggle premium
-3. After admin user management, build domain/section reading pages.
+2. Verify admin user-management actions in production after the latest deploy from `main`.
+3. Build domain/section reading pages.
 
 Keep each slice small and verify with:
 
