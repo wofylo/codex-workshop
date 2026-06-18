@@ -7,7 +7,7 @@ This is the current resume point for continuing the CCA-F exam prep app from Cod
 - Workspace: `D:\Lab\codex-workshop`
 - Repo: `git@github.com:wofylo/codex-workshop.git`
 - Branch: `main`
-- Latest pushed commit: `5b2127bd fix: explain auth errors`
+- Latest pushed commit before this handoff refresh: `be1fa472 docs: update CLI handoff`
 - Production URL: `https://codex-workshop-two.vercel.app/`
 - Latest Vercel deployment: `dpl_4X6jEGJd8SHMPydnDuVt4oRJAzzb`
 - Vercel project id: `prj_3Pb4cARgnOOI8PoMAOHgxPrsgjvi`
@@ -137,16 +137,31 @@ Local secrets are not committed. The user previously placed secrets at:
 C:\secrets\.env
 ```
 
-Known keys in that file:
+Current checked key names in that file:
 
 ```text
+JIRA_API_TOKEN
+JIRA_BASE_URL
+JIRA_DEFAULT_PROJECT_KEY
+JIRA_EMAIL
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 SUPABASE_SECRET_KEY
 SUPABASE_ACCESS_TOKEN
+VERCEL_TOKEN
 ```
 
 Do not print secret values. Source them only when needed.
+
+GitHub does not use a token for normal git operations in this workspace. The user uses SSH:
+
+```text
+C:\Users\WofyLo\.ssh\github_wofylo.pub
+```
+
+Do not ask for `GITHUB_TOKEN` / `GH_TOKEN` for `git pull`, `git fetch`, or `git push`. Only ask for a GitHub token if the task specifically requires GitHub API or `gh` CLI features that SSH cannot cover, such as Actions API logs, PR API creation, or repo administration.
+
+`VERCEL_TOKEN` exists in `C:\secrets\.env`; use it for Vercel CLI/API troubleshooting instead of asking the user again.
 
 Vercel production env must contain:
 
@@ -174,17 +189,15 @@ The desktop session used Vercel and Supabase plugins. Codex CLI can do the same 
 
 ### Vercel CLI
 
-Install/use through Corepack or `npx` if not already installed:
+Install/use through Corepack or `npx` if not already installed. Load `VERCEL_TOKEN` from `C:\secrets\.env` without printing it:
 
 ```powershell
-$env:VERCEL_TOKEN = '<token>'
 npx vercel --version
 ```
 
 Project inspection:
 
 ```powershell
-$env:VERCEL_TOKEN = '<token>'
 npx vercel project ls --token $env:VERCEL_TOKEN
 npx vercel inspect https://codex-workshop-two.vercel.app --token $env:VERCEL_TOKEN
 npx vercel logs https://codex-workshop-two.vercel.app --token $env:VERCEL_TOKEN
@@ -193,14 +206,12 @@ npx vercel logs https://codex-workshop-two.vercel.app --token $env:VERCEL_TOKEN
 Deploy from CLI if Git integration is not enough:
 
 ```powershell
-$env:VERCEL_TOKEN = '<token>'
 npx vercel deploy --prod --token $env:VERCEL_TOKEN
 ```
 
 Production env management:
 
 ```powershell
-$env:VERCEL_TOKEN = '<token>'
 npx vercel env ls production --token $env:VERCEL_TOKEN
 npx vercel env add NEXT_PUBLIC_SUPABASE_URL production --token $env:VERCEL_TOKEN
 npx vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY production --token $env:VERCEL_TOKEN
@@ -228,10 +239,9 @@ Invoke-RestMethod -Headers $headers -Uri "https://api.vercel.com/v2/deployments/
 
 ### Supabase CLI
 
-Use the access token from `C:\secrets\.env`:
+Use `SUPABASE_ACCESS_TOKEN` from `C:\secrets\.env` without printing it:
 
 ```powershell
-$env:SUPABASE_ACCESS_TOKEN = '<token>'
 $env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
 corepack pnpm dlx supabase@latest --version
 corepack pnpm dlx supabase@latest projects list
@@ -240,7 +250,6 @@ corepack pnpm dlx supabase@latest projects list
 Link local project if needed:
 
 ```powershell
-$env:SUPABASE_ACCESS_TOKEN = '<token>'
 $env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
 corepack pnpm dlx supabase@latest link --project-ref ufqcfniaxmwwcwmrssfk
 ```
@@ -248,7 +257,6 @@ corepack pnpm dlx supabase@latest link --project-ref ufqcfniaxmwwcwmrssfk
 List migrations:
 
 ```powershell
-$env:SUPABASE_ACCESS_TOKEN = '<token>'
 $env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
 corepack pnpm dlx supabase@latest migration list --linked
 ```
@@ -256,7 +264,6 @@ corepack pnpm dlx supabase@latest migration list --linked
 Generate remote database types:
 
 ```powershell
-$env:SUPABASE_ACCESS_TOKEN = '<token>'
 $env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
 corepack pnpm dlx supabase@latest gen types typescript --project-id ufqcfniaxmwwcwmrssfk --schema public > src/lib/supabase/database.types.ts
 ```
@@ -264,7 +271,6 @@ corepack pnpm dlx supabase@latest gen types typescript --project-id ufqcfniaxmww
 Advisors:
 
 ```powershell
-$env:SUPABASE_ACCESS_TOKEN = '<token>'
 $env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
 corepack pnpm dlx supabase@latest db lint --linked
 ```
@@ -318,7 +324,21 @@ order by version;
 
 ### GitHub CLI
 
-If available:
+Normal GitHub git operations use SSH and do not require `GITHUB_TOKEN`:
+
+```powershell
+git fetch origin
+git pull --ff-only
+git push origin main
+```
+
+SSH public key:
+
+```text
+C:\Users\WofyLo\.ssh\github_wofylo.pub
+```
+
+If `gh` is available and API features are explicitly needed:
 
 ```powershell
 gh repo view wofylo/codex-workshop
@@ -326,13 +346,7 @@ gh run list --repo wofylo/codex-workshop --limit 10
 gh run view --repo wofylo/codex-workshop --log
 ```
 
-If `gh` is unavailable, use git and GitHub web/API:
-
-```powershell
-git status --short --branch
-git log --oneline -10
-git push origin main
-```
+Only request `GITHUB_TOKEN` / `GH_TOKEN` when these API-style operations are required and SSH is not enough.
 
 ## Troubleshooting Playbook Without Plugins
 
