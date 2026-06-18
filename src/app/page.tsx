@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { BookOpenCheck, Crown, Gauge, ShieldCheck } from "lucide-react";
 import {
   Card,
@@ -8,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 const foundationItems = [
   {
@@ -43,10 +46,20 @@ export default function Home() {
           A dark scholarly command center for certification study.
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
-          This first slice establishes the deployable app shell. Auth, database
-          migrations, study pages, quizzes, admin tools, and AI features are
-          implemented in follow-up plans.
+          The deployable foundation is live with Supabase-backed access requests,
+          approved-user gates, and admin route protection.
         </p>
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+          <Link className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")} href="/auth/login">
+            Sign in
+          </Link>
+          <Link
+            className={cn(buttonVariants({ size: "lg", variant: "outline" }), "w-full sm:w-auto")}
+            href="/auth/sign-up"
+          >
+            Request access
+          </Link>
+        </div>
         <Separator className="my-8 bg-border" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {foundationItems.map((item) => {
@@ -62,7 +75,7 @@ export default function Home() {
                   <CardDescription>{item.detail}</CardDescription>
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground">
-                  Ready for the next implementation phase.
+                  Ready for protected workflow implementation.
                 </CardContent>
               </Card>
             );
