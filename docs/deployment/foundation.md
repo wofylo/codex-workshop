@@ -48,3 +48,50 @@ SUPABASE_SECRET_KEY
 ```
 
 The AI and email variables are optional until those features are implemented.
+
+## Database And Auth Setup
+
+This phase uses manual Supabase migration application.
+
+Local migration check:
+
+```powershell
+$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
+corepack pnpm dlx supabase@latest db reset
+corepack pnpm dlx supabase@latest gen types typescript --local --schema public > src/lib/supabase/database.types.ts
+corepack pnpm typecheck
+```
+
+Production setup:
+
+1. Create the Supabase project.
+2. Configure email/password auth.
+3. Apply the SQL files in `supabase/migrations/` in filename order through Supabase CLI or the SQL Editor.
+4. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SECRET_KEY` in Vercel production.
+5. Deploy from `main`.
+
+## First Admin
+
+The first admin is created manually for v1.
+
+1. Visit `/auth/sign-up`.
+2. Create the account that should become the first admin.
+3. Open Supabase Table Editor or SQL Editor.
+4. Find the matching row in `public.profiles`.
+5. Set:
+
+```sql
+update public.profiles
+set
+  role = 'admin',
+  approval_status = 'approved',
+  approved_at = now(),
+  approved_by = id
+where display_name_normalized = lower('YOUR DISPLAY NAME');
+```
+
+6. Sign in at `/auth/login`.
+7. Verify `/dashboard` loads.
+8. Verify `/admin` loads for the admin account.
+
+Do not soft-delete, reject, or demote the only active approved admin. The database trigger blocks this, but the operational rule is to create a second admin before changing the first one.

@@ -1,4 +1,5 @@
 create extension if not exists pgcrypto with schema extensions;
+create schema if not exists private;
 
 create type public.app_role as enum ('student', 'admin');
 create type public.approval_status as enum ('pending', 'approved', 'rejected');
@@ -150,7 +151,7 @@ create table public.quiz_attempt_questions (
   constraint quiz_attempt_questions_attempt_position_unique unique (attempt_id, position),
   constraint quiz_attempt_questions_attempt_question_unique unique (attempt_id, question_id),
   constraint quiz_attempt_questions_position_positive check (position >= 1),
-  constraint quiz_attempt_questions_choice_order_length check (array_length(choice_order, 1) = 4),
+  constraint quiz_attempt_questions_choice_order_length check (cardinality(choice_order) = 4),
   constraint quiz_attempt_questions_correct_snapshot_range check (correct_choice_index_snapshot between 0 and 3)
 );
 
@@ -203,7 +204,7 @@ create table public.admin_audit_events (
   created_at timestamptz not null default now()
 );
 
-create function public.set_updated_at()
+create function private.set_updated_at()
 returns trigger
 language plpgsql
 security definer
@@ -216,21 +217,21 @@ end;
 $$;
 
 create trigger profiles_set_updated_at before update on public.profiles
-  for each row execute function public.set_updated_at();
+  for each row execute function private.set_updated_at();
 create trigger app_settings_set_updated_at before update on public.app_settings
-  for each row execute function public.set_updated_at();
+  for each row execute function private.set_updated_at();
 create trigger study_domains_set_updated_at before update on public.study_domains
-  for each row execute function public.set_updated_at();
+  for each row execute function private.set_updated_at();
 create trigger study_sections_set_updated_at before update on public.study_sections
-  for each row execute function public.set_updated_at();
+  for each row execute function private.set_updated_at();
 create trigger questions_set_updated_at before update on public.questions
-  for each row execute function public.set_updated_at();
+  for each row execute function private.set_updated_at();
 create trigger quiz_attempts_set_updated_at before update on public.quiz_attempts
-  for each row execute function public.set_updated_at();
+  for each row execute function private.set_updated_at();
 create trigger quiz_attempt_answers_set_updated_at before update on public.quiz_attempt_answers
-  for each row execute function public.set_updated_at();
+  for each row execute function private.set_updated_at();
 
-create function public.prevent_last_active_admin_loss()
+create function private.prevent_last_active_admin_loss()
 returns trigger
 language plpgsql
 security definer
@@ -238,12 +239,28 @@ set search_path = public
 as $$
 declare
   active_admin_count integer;
+  removing_admin boolean;
 begin
-  if old.role = 'admin'
-    and old.approval_status = 'approved'
-    and old.is_deleted = false
-    and (new.role <> 'admin' or new.approval_status <> 'approved' or new.is_deleted = true)
-  then
+  if tg_op = 'DELETE' then
+    removing_admin :=
+      old.role = 'admin'
+      and old.approval_status = 'approved'
+      and old.is_deleted = false;
+  else
+    removing_admin :=
+      old.role = 'admin'
+      and old.approval_status = 'approved'
+      and old.is_deleted = false
+      and (
+        new.role <> 'admin'
+        or new.approval_status <> 'approved'
+        or new.is_deleted = true
+      );
+  end if;
+
+  if removing_admin then
+    perform pg_advisory_xact_lock(20260618, 1);
+
     select count(*)
     into active_admin_count
     from public.profiles
@@ -257,13 +274,17 @@ begin
     end if;
   end if;
 
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+
   return new;
 end;
 $$;
 
 create trigger profiles_prevent_last_active_admin_loss
-  before update of role, approval_status, is_deleted on public.profiles
-  for each row execute function public.prevent_last_active_admin_loss();
+  before update or delete on public.profiles
+  for each row execute function private.prevent_last_active_admin_loss();
 
 insert into public.app_settings (id, daily_ai_limit)
 values (true, 25)
@@ -287,7 +308,14 @@ insert into public.study_sections (
   source_path_zh,
   sort_order
 )
-select id, slug, title_en, title_zh, source_path_en, source_path_zh, sort_order
+select
+  study_domains.id,
+  section_seed.slug,
+  section_seed.title_en,
+  section_seed.title_zh,
+  section_seed.source_path_en,
+  section_seed.source_path_zh,
+  section_seed.sort_order
 from (
   values
     ('agentic-architecture-orchestration', 'overview', 'Agentic Architecture & Orchestration', 'Agentic Architecture & Orchestration', 'CCA-F/01_Domain_Agentic_Architecture.md', 'CCA-F/01_Domain_Agentic_Architecture_zh.md', 1),
