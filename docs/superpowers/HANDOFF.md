@@ -1,187 +1,454 @@
-# CCA-F Website Handoff
+# CCA-F Exam Prep Handoff For Codex CLI
 
-This document is the resume point for continuing the CCA-F exam prep website later. It summarizes the current repository state, what was implemented in the foundation phase, important environment notes, and the next concrete implementation step.
+This is the current resume point for continuing the CCA-F exam prep app from Codex CLI or another non-plugin agent. It intentionally uses local commands, CLIs, and HTTP APIs instead of Codex desktop plugins.
 
-## Current State
+## Current Snapshot
 
-### Foundation Is Implemented
+- Workspace: `D:\Lab\codex-workshop`
+- Repo: `git@github.com:wofylo/codex-workshop.git`
+- Branch: `main`
+- Latest pushed commit: `5b2127bd fix: explain auth errors`
+- Production URL: `https://codex-workshop-two.vercel.app/`
+- Latest Vercel deployment: `dpl_4X6jEGJd8SHMPydnDuVt4oRJAzzb`
+- Vercel project id: `prj_3Pb4cARgnOOI8PoMAOHgxPrsgjvi`
+- Vercel team id: `team_lEkdAVKvWzUfDSPAQw13RsQs`
+- Supabase project ref: `ufqcfniaxmwwcwmrssfk`
+- Supabase URL: `https://ufqcfniaxmwwcwmrssfk.supabase.co`
+- Supabase region: `ap-northeast-1`
 
-The Next.js foundation has been implemented and merged into `main`. The app now has a deployable root Next.js App Router project with TypeScript, Tailwind CSS, shadcn/ui-compatible components, Supabase client boundaries, environment validation, a real health endpoint, CI workflow, and deployment notes. Database migrations, RLS policies, auth pages, study pages, quiz flows, admin pages, and AI features are still intentionally outside this completed foundation phase.
+## Implemented
 
-Use these commands first when resuming. They verify the branch state and show the latest merged foundation commits.
+- Next.js App Router app with TypeScript, Tailwind CSS, shadcn-compatible UI components, and dark scholarly styling.
+- `/api/health` returns `{"ok":true,"service":"cca-f-exam-prep"}`.
+- Supabase browser/server/admin clients with public/server-only env separation.
+- Supabase migrations applied remotely:
+  - `20260618081553 auth_core_schema`
+  - `20260618081641 auth_rls_policies`
+  - `20260618121127 optimize_rls_and_indexes`
+- Generated Supabase database types in `src/lib/supabase/database.types.ts`.
+- Auth gate v1:
+  - `/auth/sign-up`
+  - `/auth/login`
+  - `/auth/pending`
+  - `/auth/rejected`
+  - `/auth/deactivated`
+  - `/auth/verify-email`
+  - `/auth/error?reason=...`
+  - `/dashboard`
+  - `/admin`
+- Signup creates a Supabase Auth user, then creates `public.profiles` using the server-only `SUPABASE_SECRET_KEY`.
+- `/dashboard` requires an authenticated, approved, non-deleted profile.
+- `/admin` requires an approved admin profile.
+- Auth error page now distinguishes:
+  - `reason=login`
+  - `reason=signup`
+  - `reason=profile`
 
-| Description | Command | Expected Result |
-|---|---|---|
-| Check working tree | `git status --short --branch` | Clean tree on `main`; currently shows `main...origin/main [gone]` because the upstream tracking ref is stale |
-| View recent commits | `git log --oneline -10` | Latest commit is `44f8047 fix: make foundation build deterministic` |
-| List app files | `Get-ChildItem -Recurse -File -Depth 3 src,docs,.github | Select-Object FullName` | Shows the Next.js app, deployment guide, and CI workflow |
+## Current Production Auth State
 
-The branch `cca-f-foundation` was fast-forward merged into `main` and then deleted locally. A separate branch named `feature/foundation` still exists locally, but it was not part of the completed merge workflow.
+As of the last plugin check:
 
-## Verification State
+```text
+auth.users = 0
+public.profiles = 0
+active approved admins = 0
+```
 
-### Last Verified Commands
+This explains the screenshot showing `Authentication problem`: the user tried to log in before any account existed. Supabase Auth logs showed:
 
-The merged `main` branch was verified immediately after the fast-forward merge. The production build needs placeholder public Supabase values when no real local `.env.local` exists because the proxy/env modules validate public Supabase configuration.
+```text
+400: Invalid login credentials
+path: /token
+grant_type: password
+```
 
-Run these checks again after any future change. If build fails because Supabase env values are missing, use the placeholder command below for local build-only verification.
+Correct next manual flow:
 
-| Description | Command | Expected Result |
-|---|---|---|
-| Lint app | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm lint` | Exits 0 |
-| Typecheck app | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm typecheck` | Exits 0 |
-| Build app with placeholder public env | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; $env:NEXT_PUBLIC_SUPABASE_URL='https://example.supabase.co'; $env:NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='placeholder'; corepack pnpm build` | Exits 0 and lists `/`, `/_not-found`, and `/api/health` |
-| Secret exposure scan | `$paths = @('.env.example') + (Get-ChildItem -Path src -Recurse -Include *.ts,*.tsx | Select-Object -ExpandProperty FullName); Select-String -Path $paths -Pattern "NEXT_PUBLIC_.*SECRET|NEXT_PUBLIC_.*KEY.*SECRET|SUPABASE_SECRET_KEY" -CaseSensitive` | `SUPABASE_SECRET_KEY` appears only in `.env.example`, `src/lib/env/server.ts`, and `src/lib/supabase/admin.ts` |
+1. Visit `https://codex-workshop-two.vercel.app/auth/sign-up`.
+2. Create the first account.
+3. Open Supabase SQL Editor.
+4. Promote that account to first admin:
 
-There is no `test` script yet. For now, lint, typecheck, and build are the foundation verification gate.
+```sql
+update public.profiles
+set
+  role = 'admin',
+  approval_status = 'approved',
+  approved_at = now(),
+  approved_by = id
+where display_name_normalized = lower('YOUR DISPLAY NAME');
+```
 
-## Implemented Foundation
+5. Sign in at `/auth/login`.
+6. Verify `/dashboard`.
+7. Verify `/admin`.
 
-### App Foundation
+## Verification Commands
 
-The app lives at the repository root. It uses the Next.js App Router, React, TypeScript, pnpm, Tailwind CSS v4, and a `src/` directory. The first screen is a dark scholarly command-center status page, not a marketing landing page.
+Use PowerShell from `D:\Lab\codex-workshop`.
 
-Important implemented files:
+```powershell
+$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
+corepack pnpm test
+corepack pnpm lint
+corepack pnpm typecheck
+```
 
-| Area | Files | Purpose |
-|---|---|---|
-| App shell | `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css` | Root layout, metadata, dark/gold theme, and foundation status page |
-| Health check | `src/app/api/health/route.ts`, `scripts/check-health.mjs` | Real `/api/health` endpoint and smoke-check script |
-| UI components | `components.json`, `src/lib/utils.ts`, `src/components/ui/*` | shadcn/ui-compatible `Button`, `Card`, `Badge`, and `Separator` foundation |
-| Package/config | `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `tsconfig.json`, `eslint.config.mjs`, `postcss.config.mjs`, `next.config.ts` | App scripts, dependencies, TypeScript, ESLint, Tailwind/PostCSS, and Next config |
-| CI/deployment | `.github/workflows/ci.yml`, `docs/deployment/foundation.md` | GitHub Actions lint/typecheck workflow and Vercel setup notes |
+For local build, env vars are required because server routes import validated env:
 
-The build was made deterministic by avoiding `next/font/google`, because network-restricted builds cannot fetch Google Fonts. Font stacks are defined in CSS instead.
+```powershell
+$env:NEXT_PUBLIC_SUPABASE_URL='https://example.supabase.co'
+$env:NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='placeholder'
+$env:SUPABASE_SECRET_KEY='placeholder-secret'
+$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
+corepack pnpm build
+```
 
-## Environment And Tooling Notes
+Expected build routes include:
 
-### Local Package Manager
+```text
+/
+/admin
+/api/health
+/auth/deactivated
+/auth/error
+/auth/login
+/auth/pending
+/auth/rejected
+/auth/sign-up
+/auth/verify-email
+/dashboard
+```
 
-The plan uses pnpm. In this environment, `pnpm` was made available through Corepack using a local Corepack cache at `.corepack`, which is ignored by Git. Some installs ran with an escalated environment and used `D:\.pnpm-store`; if pnpm reports an unexpected store location later, run install with the same store or reinstall cleanly.
+Secret boundary scan:
 
-Use these commands to restore local tooling if needed.
+```powershell
+$paths = @('.env.example') + (Get-ChildItem -Path src -Recurse -Include *.ts,*.tsx | Select-Object -ExpandProperty FullName)
+Select-String -Path $paths -Pattern 'NEXT_PUBLIC_.*SECRET|NEXT_PUBLIC_.*KEY.*SECRET|SUPABASE_SECRET_KEY' -CaseSensitive
+```
 
-| Description | Command | Expected Result |
-|---|---|---|
-| Activate pnpm with local Corepack cache | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack prepare pnpm@latest --activate` | pnpm is available through Corepack |
-| Install dependencies | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm install` | Dependencies installed |
-| Install with existing escalated store if needed | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm install --store-dir D:\.pnpm-store` | Dependencies linked from existing store |
+Expected: `SUPABASE_SECRET_KEY` only appears in `.env.example`, `src/lib/env/server.ts`, `src/lib/supabase/admin.ts`, and server-only auth code.
 
-Ignored local artifacts include `.corepack/`, `.pnpm-store/`, `node_modules/`, `.next/`, `next-env.d.ts`, and TypeScript build info.
+## Secrets And Environment
+
+Local secrets are not committed. The user previously placed secrets at:
+
+```text
+C:\secrets\.env
+```
+
+Known keys in that file:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SECRET_KEY
+SUPABASE_ACCESS_TOKEN
+```
+
+Do not print secret values. Source them only when needed.
+
+Vercel production env must contain:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SECRET_KEY
+```
+
+Optional later:
+
+```text
+AI_PROVIDER
+AI_BASE_URL
+AI_API_KEY
+AI_MODEL
+EMAIL_PROVIDER
+EMAIL_API_KEY
+EMAIL_FROM
+```
+
+## Plugin Replacement: CLI And API Equivalents
+
+The desktop session used Vercel and Supabase plugins. Codex CLI can do the same work through official CLIs or HTTPS APIs.
+
+### Vercel CLI
+
+Install/use through Corepack or `npx` if not already installed:
+
+```powershell
+$env:VERCEL_TOKEN = '<token>'
+npx vercel --version
+```
+
+Project inspection:
+
+```powershell
+$env:VERCEL_TOKEN = '<token>'
+npx vercel project ls --token $env:VERCEL_TOKEN
+npx vercel inspect https://codex-workshop-two.vercel.app --token $env:VERCEL_TOKEN
+npx vercel logs https://codex-workshop-two.vercel.app --token $env:VERCEL_TOKEN
+```
+
+Deploy from CLI if Git integration is not enough:
+
+```powershell
+$env:VERCEL_TOKEN = '<token>'
+npx vercel deploy --prod --token $env:VERCEL_TOKEN
+```
+
+Production env management:
+
+```powershell
+$env:VERCEL_TOKEN = '<token>'
+npx vercel env ls production --token $env:VERCEL_TOKEN
+npx vercel env add NEXT_PUBLIC_SUPABASE_URL production --token $env:VERCEL_TOKEN
+npx vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY production --token $env:VERCEL_TOKEN
+npx vercel env add SUPABASE_SECRET_KEY production --token $env:VERCEL_TOKEN
+```
+
+### Vercel REST API
+
+Use if CLI is unavailable. Replace token and ids.
+
+```powershell
+$headers = @{ Authorization = "Bearer $env:VERCEL_TOKEN" }
+$team = 'team_lEkdAVKvWzUfDSPAQw13RsQs'
+$project = 'prj_3Pb4cARgnOOI8PoMAOHgxPrsgjvi'
+Invoke-RestMethod -Headers $headers -Uri "https://api.vercel.com/v6/deployments?projectId=$project&teamId=$team"
+Invoke-RestMethod -Headers $headers -Uri "https://api.vercel.com/v9/projects/$project?teamId=$team"
+```
+
+Build logs:
+
+```powershell
+$deployment = 'dpl_4X6jEGJd8SHMPydnDuVt4oRJAzzb'
+Invoke-RestMethod -Headers $headers -Uri "https://api.vercel.com/v2/deployments/$deployment/events?teamId=$team&limit=100"
+```
+
+### Supabase CLI
+
+Use the access token from `C:\secrets\.env`:
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN = '<token>'
+$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
+corepack pnpm dlx supabase@latest --version
+corepack pnpm dlx supabase@latest projects list
+```
+
+Link local project if needed:
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN = '<token>'
+$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
+corepack pnpm dlx supabase@latest link --project-ref ufqcfniaxmwwcwmrssfk
+```
+
+List migrations:
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN = '<token>'
+$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
+corepack pnpm dlx supabase@latest migration list --linked
+```
+
+Generate remote database types:
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN = '<token>'
+$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
+corepack pnpm dlx supabase@latest gen types typescript --project-id ufqcfniaxmwwcwmrssfk --schema public > src/lib/supabase/database.types.ts
+```
+
+Advisors:
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN = '<token>'
+$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'
+corepack pnpm dlx supabase@latest db lint --linked
+```
+
+If the installed CLI lacks a command, check help first:
+
+```powershell
+corepack pnpm dlx supabase@latest --help
+corepack pnpm dlx supabase@latest db --help
+corepack pnpm dlx supabase@latest migration --help
+```
+
+### Supabase Management API
+
+Use when CLI cannot do a task. Replace token and project ref.
+
+```powershell
+$headers = @{ Authorization = "Bearer $env:SUPABASE_ACCESS_TOKEN" }
+Invoke-RestMethod -Headers $headers -Uri "https://api.supabase.com/v1/projects/ufqcfniaxmwwcwmrssfk"
+Invoke-RestMethod -Headers $headers -Uri "https://api.supabase.com/v1/projects/ufqcfniaxmwwcwmrssfk/api-keys"
+```
+
+Avoid printing API keys in logs. If a response contains secrets, inspect locally and redact before sharing.
+
+### Direct SQL Without Plugin
+
+Preferred for Codex CLI is `psql` using a database connection string from Supabase dashboard, stored in an env var:
+
+```powershell
+$env:SUPABASE_DB_URL = '<postgresql connection string>'
+psql $env:SUPABASE_DB_URL -c "select count(*) from auth.users;"
+psql $env:SUPABASE_DB_URL -c "select count(*) from public.profiles;"
+```
+
+If `psql` is not installed, use Supabase SQL Editor manually for one-off checks.
+
+Current useful checks:
+
+```sql
+select
+  (select count(*) from auth.users) as auth_user_count,
+  (select count(*) from public.profiles) as profile_count,
+  (select count(*) from public.profiles where role = 'admin' and approval_status = 'approved' and is_deleted = false) as active_admin_count;
+```
+
+```sql
+select version, name
+from supabase_migrations.schema_migrations
+order by version;
+```
+
+### GitHub CLI
+
+If available:
+
+```powershell
+gh repo view wofylo/codex-workshop
+gh run list --repo wofylo/codex-workshop --limit 10
+gh run view --repo wofylo/codex-workshop --log
+```
+
+If `gh` is unavailable, use git and GitHub web/API:
+
+```powershell
+git status --short --branch
+git log --oneline -10
+git push origin main
+```
+
+## Troubleshooting Playbook Without Plugins
+
+### Auth Shows `/auth/error?reason=login`
+
+Root cause class: Supabase rejected email/password.
+
+Check:
+
+```sql
+select count(*) from auth.users;
+select id, email, email_confirmed_at, created_at from auth.users order by created_at desc limit 5;
+select display_name, role, approval_status, is_deleted from public.profiles order by created_at desc limit 5;
+```
+
+If there are no users, create one through `/auth/sign-up`.
+
+### Auth Shows `/auth/error?reason=signup`
+
+Root cause class: Supabase could not create the auth user.
+
+Check Supabase Auth settings:
+
+- Email/password signup enabled.
+- Email confirmation setting understood.
+- Password meets Supabase policy.
+- Email is not already registered.
+
+Check Auth logs in Supabase dashboard or with API/CLI if available.
+
+### Auth Shows `/auth/error?reason=profile`
+
+Root cause class: auth user was created, but server-only profile insert failed.
+
+Check:
+
+- Vercel production has `SUPABASE_SECRET_KEY`.
+- `SUPABASE_SECRET_KEY` is a Supabase secret/service key, not the publishable key.
+- `src/lib/supabase/admin.ts` remains server-only.
+
+Then check:
+
+```sql
+select count(*) from auth.users;
+select count(*) from public.profiles;
+```
+
+If an auth user exists without a profile, manually create a profile or delete/retry the auth user.
+
+### `/dashboard` Redirects To Pending
+
+Expected when profile exists but is not approved.
+
+Promote first admin:
+
+```sql
+update public.profiles
+set
+  role = 'admin',
+  approval_status = 'approved',
+  approved_at = now(),
+  approved_by = id
+where display_name_normalized = lower('YOUR DISPLAY NAME');
+```
+
+### `/admin` 404s
+
+Expected for approved non-admin users. Set `role = 'admin'` for the intended admin profile.
 
 ## Important Files
 
-### Resume Reading Order
+- `src/app/auth/actions.ts`: signup/login/logout server actions.
+- `src/app/auth/error/page.tsx`: reason-aware auth error page.
+- `src/lib/auth/error-copy.ts`: auth error copy mapping.
+- `src/lib/auth/display-name.ts`: display name validation.
+- `src/lib/auth/account-status.ts`: redirect decision logic.
+- `src/lib/auth/profiles.ts`: server-side current user/profile lookup.
+- `src/lib/auth/guards.ts`: approved-user/admin guards.
+- `src/lib/supabase/admin.ts`: server-only admin Supabase client.
+- `src/lib/supabase/server.ts`: server Supabase client with cookies.
+- `src/lib/supabase/proxy.ts` and `src/proxy.ts`: Supabase session refresh.
+- `supabase/migrations/*.sql`: database schema, RLS, and optimization migrations.
+- `docs/deployment/foundation.md`: deployment and first-admin notes.
 
-Read these files in order before starting the next implementation phase. The design spec remains the source of truth, while the completed foundation plan explains the boundaries of what was intentionally not implemented.
+## Recent Commits
 
-| Description | Command | Expected Result |
-|---|---|---|
-| Read technical design spec | `Get-Content -Raw docs\superpowers\specs\2026-06-18-cca-f-exam-prep-website-design.md` | Full product, architecture, schema, RLS, AI, CI/CD, and UI direction |
-| Read beginner guide | `Get-Content -Raw docs\superpowers\specs\2026-06-18-cca-f-beginner-setup-guide.md` | Plain-language GitHub, Vercel, Supabase, env, and migration guidance |
-| Read completed foundation plan | `Get-Content -Raw docs\superpowers\plans\2026-06-18-cca-f-foundation-implementation-plan.md` | Original task-by-task foundation implementation plan |
-| Read deployment guide | `Get-Content -Raw docs\deployment\foundation.md` | Foundation deployment checklist and Vercel preview warning |
-| Confirm seed study content | `Get-ChildItem -File CCA-F | Select-Object Name,Length` | 12 English/Chinese CCA-F Markdown files |
+```text
+5b2127bd fix: explain auth errors
+1a093aa3 feat: add auth gate pages
+51bf478a fix: optimize Supabase RLS policies
+d44e9f97 feat: prepare Supabase deploy foundation
+1d1880e3 feat: add auth database schema
+013730d6 docs: add database auth implementation plan
+2453cb31 docs: update CCA-F handoff
+44f8047c fix: make foundation build deterministic
+```
 
-## Approved Product Decisions
+## Next Recommended Work
 
-### Scope
+1. Create the first account through `/auth/sign-up`.
+2. Promote it to admin in Supabase.
+3. Verify `/dashboard` and `/admin` in production.
+4. Build the admin user-management slice:
+   - list pending users
+   - approve user
+   - reject user
+   - soft-delete user
+   - restore user
+   - toggle premium
+5. After admin user management, build study dashboard and domain/section reading pages.
 
-The website is a multi-user CCA-F exam prep app. Users request access, admins approve them, and approved users study bilingual content, take learning quizzes, take mock exams, track progress, and appear on a public leaderboard. Premium users can use AI features when the Siraya API is configured.
+Keep each slice small and verify with:
 
-Key scope decisions remain unchanged:
-
-- Multiple users.
-- Email/password auth only for v1.
-- Admin-approved access after signup.
-- Admin dashboard required.
-- Admin can approve, reject, soft-delete, restore, toggle premium, view progress, and manage questions.
-- First admin is created manually in Supabase.
-- Study guides are Markdown files in GitHub for v1.
-- Question bank is managed in Supabase/admin dashboard.
-- One Supabase environment for v1.
-- Supabase CLI is used locally.
-- SQL migrations are stored in GitHub and applied manually in phase one.
-- Vercel deploys production from `main`.
-- GitHub Actions must run on pull requests and `main`.
-- Vercel preview deployments are disabled for v1 unless a separate preview Supabase project exists.
-
-## Approved UI Direction
-
-### Dark Scholarly Command Center
-
-The visual direction is modern, dark, and serious, with restrained gold accents. The app should feel like a focused certification study cockpit, not a marketing landing page. Gold is used for emphasis and state, not as the whole palette.
-
-Visual requirements still apply:
-
-- Dark theme only for v1.
-- Near-black page background.
-- Charcoal panels.
-- Muted slate text.
-- Soft borders.
-- Restrained gold accent for primary actions, selected state, progress, score, premium markers, badges, and focus rings.
-- Avoid purple/blue gradient SaaS styling.
-- Avoid one-note gold/brown dominance.
-- Use shadcn/ui-compatible components with custom dark/gold CSS variables.
-- Cards use restrained borders and `8px` radius or less.
-- Layouts prioritize scanning and repeated study use.
-
-## Next Step
-
-### Create The Database/Auth Implementation Plan
-
-The foundation phase is complete. The next action should be to create a new implementation plan for the database and authentication foundation, then execute that plan.
-
-Recommended next scope:
-
-- Supabase migration files for enums, core tables, constraints, indexes, helper functions, and initial RLS policies.
-- Generated Supabase TypeScript database types.
-- Auth signup/login/logout pages.
-- Profile bootstrap after signup.
-- Pending, rejected, deactivated, and verify-email status pages.
-- Server-side route guards for approved users and admins.
-- First admin manual setup instructions.
-
-Do not start study content rendering, quiz flows, admin question management, AI, or email until the database/auth foundation is implemented and verified.
-
-Suggested next commands and actions:
-
-| Description | Command / Action | Expected Result |
-|---|---|---|
-| Start by writing a plan | Create `docs/superpowers/plans/YYYY-MM-DD-cca-f-database-auth-implementation-plan.md` | A task-by-task plan for migrations, auth pages, route guards, and verification |
-| Use implementation workflow | Say `execute database auth plan inline` or use subagent-driven execution if available | Work proceeds with review gates and verification |
-| Keep secrets server-only | Ensure browser code imports only `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | No secret leakage into client bundles |
-
-## Commit History
-
-### Relevant Commits
-
-These commits capture the current foundation state. Use them to verify the handoff matches the repository.
-
-| Commit | Message | Meaning |
-|---|---|---|
-| `44f8047` | `fix: make foundation build deterministic` | Removes network-dependent font fetch and stale shadcn CSS import |
-| `2a241e9` | `ci: add foundation checks` | Adds GitHub Actions lint/typecheck workflow and deployment notes |
-| `670649b` | `feat: add shadcn UI foundation` | Adds shadcn-compatible UI components and componentized foundation page |
-| `554c5f7` | `feat: add health check endpoint` | Adds `/api/health` and `pnpm health:check` |
-| `ab26c98` | `feat: add Supabase client foundation` | Adds env validation and browser/server/admin/proxy Supabase clients |
-| `e32e73e` | `feat: scaffold Next.js foundation` | Adds root Next.js app foundation |
-| `c8aa497` | `Add project handoff document` | Adds the original handoff document |
-| `749e3bb` | `Add dark gold UI direction` | Adds modern dark/gold visual direction to spec and foundation plan |
-
-## Do Not Forget
-
-### Implementation Cautions
-
-These constraints were explicitly decided and should not be casually changed during implementation. They prevent common security and deployment mistakes.
-
-| Concern | Requirement | Why It Matters |
-|---|---|---|
-| Client secrets | Never expose `SUPABASE_SECRET_KEY`, AI keys, or email keys to browser code | Prevents credential leakage |
-| AI usage limits | Derive user from `auth.uid()` in the database/RPC layer | Prevents user-id spoofing |
-| Vercel previews | Disable previews unless a separate preview Supabase exists | Prevents test builds touching production data |
-| Main branch | Require PR checks and no direct pushes | Prevents broken production deploys |
-| Quiz attempts | Store frozen question and choice order snapshots | Keeps old scores stable after question edits |
-| RLS | Enforce soft-deleted user blocking in DB helper functions | Prevents UI-only security |
-| AI questions | Save generated questions as `pending_review` | Prevents polluted shared question bank |
-
+```powershell
+corepack pnpm test
+corepack pnpm lint
+corepack pnpm typecheck
+corepack pnpm build
+```
