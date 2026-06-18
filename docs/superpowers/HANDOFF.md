@@ -46,15 +46,17 @@ This is the current resume point for continuing the CCA-F exam prep app from Cod
 
 ## Current Production Auth State
 
-As of the last plugin check:
+As of 2026-06-18 21:23 +08:00, checked through server-side `@supabase/supabase-js` using local secrets without printing secret values:
 
 ```text
-auth.users = 0
-public.profiles = 0
-active approved admins = 0
+auth.users = 1
+public.profiles = 1
+active approved admins = 1
 ```
 
-This explains the screenshot showing `Authentication problem`: the user tried to log in before any account existed. Supabase Auth logs showed:
+The first production account has profile display name `wofy` and is now `admin` / `approved`.
+
+Earlier, the screenshot showing `Authentication problem` was explained by login before any account existed. Supabase Auth logs showed:
 
 ```text
 400: Invalid login credentials
@@ -62,26 +64,11 @@ path: /token
 grant_type: password
 ```
 
-Correct next manual flow:
+Remaining manual production verification:
 
-1. Visit `https://codex-workshop-two.vercel.app/auth/sign-up`.
-2. Create the first account.
-3. Open Supabase SQL Editor.
-4. Promote that account to first admin:
-
-```sql
-update public.profiles
-set
-  role = 'admin',
-  approval_status = 'approved',
-  approved_at = now(),
-  approved_by = id
-where display_name_normalized = lower('YOUR DISPLAY NAME');
-```
-
-5. Sign in at `/auth/login`.
-6. Verify `/dashboard`.
-7. Verify `/admin`.
+1. Sign in at `https://codex-workshop-two.vercel.app/auth/login` with the first admin account.
+2. Verify `/dashboard` loads.
+3. Verify `/admin` loads.
 
 ## Verification Commands
 
@@ -446,17 +433,15 @@ d44e9f97 feat: prepare Supabase deploy foundation
 
 ## Next Recommended Work
 
-1. Create the first account through `/auth/sign-up`.
-2. Promote it to admin in Supabase.
-3. Verify `/dashboard` and `/admin` in production.
-4. Build the admin user-management slice:
+1. Verify `/dashboard` and `/admin` in production after logging in with the first admin account.
+2. Build the admin user-management slice:
    - list pending users
    - approve user
    - reject user
    - soft-delete user
    - restore user
    - toggle premium
-5. After admin user management, build study dashboard and domain/section reading pages.
+3. After admin user management, build study dashboard and domain/section reading pages.
 
 Keep each slice small and verify with:
 

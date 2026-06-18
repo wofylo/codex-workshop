@@ -92,15 +92,15 @@ Use the Supabase access token for CLI/API work. Use `SUPABASE_SECRET_KEY` only s
 
 ## Current Auth State
 
-Last checked production database state:
+Last checked production database state on 2026-06-18 21:23 +08:00:
 
 ```text
-auth.users = 0
-public.profiles = 0
-active approved admins = 0
+auth.users = 1
+public.profiles = 1
+active approved admins = 1
 ```
 
-If login fails before an account is created, the root cause is expected: Supabase has no user for those credentials. Create the first account at `/auth/sign-up`, then promote it to admin in Supabase SQL Editor.
+First account `wofy` has been promoted to an approved admin. If login fails now, check the credentials, email confirmation policy, and Supabase Auth logs rather than assuming the account is missing.
 
 First-admin SQL:
 
