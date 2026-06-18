@@ -1,39 +1,72 @@
+import { Badge } from "@/components/ui/badge";
+import { BookOpenCheck, Crown, Gauge, ShieldCheck } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+
 const foundationItems = [
-  { label: "Next.js App Router", detail: "Application shell" },
-  { label: "TypeScript", detail: "Strict project contracts" },
-  { label: "Tailwind CSS", detail: "Dark/gold design tokens" },
-  { label: "Supabase boundary", detail: "Client and server split" },
-  { label: "GitHub Actions", detail: "PR and main checks" },
-  { label: "Vercel", detail: "Production deploy path" },
+  {
+    label: "Study cockpit",
+    detail: "Dark workspace for domain progress and review focus.",
+    icon: BookOpenCheck,
+  },
+  {
+    label: "Deployment path",
+    detail: "GitHub Actions and Vercel production branch are defined.",
+    icon: Gauge,
+  },
+  {
+    label: "Security boundary",
+    detail: "Public and server-only Supabase clients are separated.",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Premium-ready",
+    detail: "Gold accent system is reserved for premium and key actions.",
+    icon: Crown,
+  },
 ];
 
 export default function Home() {
   return (
-    <main className="min-h-svh bg-[#070706] text-[#f4efe2]">
+    <main className="min-h-svh bg-background text-foreground">
       <section className="mx-auto flex min-h-svh w-full max-w-6xl flex-col justify-center px-6 py-16">
-        <div className="max-w-3xl">
-          <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#c8a756]">
-            CCA-F Exam Prep
-          </p>
-          <h1 className="mt-5 text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-            A dark scholarly command center for certification study.
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-[#b8b0a0]">
-            This first slice establishes the deployable app shell. Auth,
-            database migrations, study pages, quizzes, admin tools, and AI
-            features are implemented in follow-up plans.
-          </p>
-        </div>
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {foundationItems.map((item) => (
-            <div
-              key={item.label}
-              className="rounded-lg border border-[#2d2a22] bg-[#12110f] px-4 py-4 shadow-[0_20px_80px_rgba(0,0,0,0.28)]"
-            >
-              <div className="text-sm font-medium text-[#f4efe2]">{item.label}</div>
-              <div className="mt-2 text-sm text-[#8f8878]">{item.detail}</div>
-            </div>
-          ))}
+        <Badge className="w-fit border-primary/40 bg-primary/10 text-primary" variant="outline">
+          CCA-F Exam Prep
+        </Badge>
+        <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
+          A dark scholarly command center for certification study.
+        </h1>
+        <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
+          This first slice establishes the deployable app shell. Auth, database
+          migrations, study pages, quizzes, admin tools, and AI features are
+          implemented in follow-up plans.
+        </p>
+        <Separator className="my-8 bg-border" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {foundationItems.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <Card key={item.label} className="rounded-lg border-border bg-card/92">
+                <CardHeader className="space-y-3">
+                  <div className="flex size-9 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary">
+                    <Icon className="size-4" aria-hidden="true" />
+                  </div>
+                  <CardTitle className="text-base">{item.label}</CardTitle>
+                  <CardDescription>{item.detail}</CardDescription>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">
+                  Ready for the next implementation phase.
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </section>
     </main>
