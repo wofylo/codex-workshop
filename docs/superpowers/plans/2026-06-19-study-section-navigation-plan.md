@@ -202,11 +202,11 @@ corepack pnpm build
 
 Expected: all commands exit 0.
 
-- [ ] **Step 2: Update handoff**
+- [x] **Step 2: Update handoff**
 
 Update `docs/superpowers/HANDOFF.md` with the new section navigation feature, verification result, and latest commit after committing the implementation.
 
-- [ ] **Step 3: Commit and push**
+- [x] **Step 3: Commit and push**
 
 Run:
 

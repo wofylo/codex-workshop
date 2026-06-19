@@ -7,7 +7,7 @@ This is the current resume point for continuing the CCA-F exam prep app from Cod
 - Workspace: `D:\Lab\codex-workshop`
 - Repo: `git@github.com:wofylo/codex-workshop.git`
 - Branch: `main`
-- Latest app feature commit: `9e5ecebf feat: add study reading pages`
+- Latest app feature commit: `4c55379 feat: add study section navigation`
 - Production URL: `https://codex-workshop-two.vercel.app/`
 - Latest Vercel deployment: `dpl_4X6jEGJd8SHMPydnDuVt4oRJAzzb`
 - Vercel project id: `prj_3Pb4cARgnOOI8PoMAOHgxPrsgjvi`
@@ -60,10 +60,16 @@ This is the current resume point for continuing the CCA-F exam prep app from Cod
   - `/study/[domainSlug]` requires an approved active user via `requireApprovedUser()`
   - reading pages support `?lang=zh` for Traditional Chinese guide content; default is English
   - `/dashboard` domain cards include an `Open reading page` link
+- Study section navigation slice:
+  - `renderMarkdownBlocks()` now assigns stable anchors to `h2` and `h3` headings
+  - `getStudyContent()` now returns `sections` for in-page navigation
+  - duplicate headings receive deterministic suffixes such as `overview-2`
+  - Traditional Chinese headings produce stable non-empty anchors
+  - study pages render mobile and desktop section navigation with matching heading `id` attributes
 
 ## Current Workspace State
 
-As of 2026-06-19, the study reading page slice has been committed and pushed to `main`.
+As of 2026-06-19, the study section navigation slice has been committed and pushed to `main`.
 
 Current working tree:
 
@@ -71,13 +77,13 @@ Current working tree:
 clean
 ```
 
-Study reading page commit:
+Latest feature commit:
 
 ```text
-9e5ecebf feat: add study reading pages
+4c55379 feat: add study section navigation
 ```
 
-Verification already run after this slice:
+Verification already run after this section navigation slice:
 
 ```text
 corepack pnpm test
@@ -89,11 +95,13 @@ corepack pnpm build
 Observed result:
 
 ```text
-tests: 20 passed, 0 failed
+tests: 23 passed, 0 failed
 lint: exit 0
 typecheck: exit 0
 build: exit 0
 ```
+
+Local browser/dev-server smoke check was attempted, but this Windows sandbox blocked reliable background dev server startup through both `Start-Process` and Node `child_process`. The production build completed successfully; do authenticated browser verification after deployment.
 
 Production route verification after push:
 
@@ -494,6 +502,7 @@ Expected for approved non-admin users. Set `role = 'admin'` for the intended adm
 ## Recent Commits
 
 ```text
+4c55379 feat: add study section navigation
 9e5ecebf feat: add study reading pages
 5b2127bd fix: explain auth errors
 1a093aa3 feat: add auth gate pages
@@ -508,9 +517,9 @@ d44e9f97 feat: prepare Supabase deploy foundation
 ## Next Recommended Work
 
 1. Verify production `/study/agentic-architecture` while signed in as an approved admin.
-2. Verify the `?lang=zh` language toggle in production while authenticated.
-3. Verify admin user-management actions in production if not already done through the browser UI.
-4. Build the next study slice, such as section navigation, progress tracking, or quiz practice.
+2. Verify the section navigation links jump to matching headings in production.
+3. Verify the `?lang=zh` language toggle and section navigation in production while authenticated.
+4. Build the next study slice, such as reading progress tracking or quiz practice.
 
 Keep each slice small and verify with:
 
