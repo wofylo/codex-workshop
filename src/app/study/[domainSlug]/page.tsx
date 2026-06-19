@@ -16,6 +16,7 @@ import {
   getStudyDomainSlugs,
   type MarkdownBlock,
   type StudyLanguage,
+  type StudySection,
 } from "@/lib/study/content";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +64,15 @@ export default async function StudyDomainPage({ params, searchParams }: StudyPag
             </Link>
           </div>
 
+          {content.sections.length > 0 ? (
+            <div className="mb-5 rounded-lg border border-border bg-card/92 p-4 lg:hidden">
+              <h2 className="text-sm font-semibold tracking-normal">Sections</h2>
+              <div className="mt-3">
+                <StudySectionNavigation sections={content.sections} />
+              </div>
+            </div>
+          ) : null}
+
           <article className="rounded-lg border border-border bg-card/92 px-5 py-6 shadow-[0_24px_90px_rgba(0,0,0,0.22)] sm:px-8">
             <header className="border-b border-border pb-6">
               <div className="flex flex-wrap items-center gap-2">
@@ -104,9 +114,40 @@ export default async function StudyDomainPage({ params, searchParams }: StudyPag
               </div>
             </CardContent>
           </Card>
+
+          {content.sections.length > 0 ? (
+            <Card className="hidden rounded-lg bg-card/92 lg:block">
+              <CardHeader>
+                <CardTitle className="text-lg">Sections</CardTitle>
+                <CardDescription>Jump within this guide.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StudySectionNavigation sections={content.sections} />
+              </CardContent>
+            </Card>
+          ) : null}
         </aside>
       </section>
     </main>
+  );
+}
+
+function StudySectionNavigation({ sections }: { sections: StudySection[] }) {
+  return (
+    <nav aria-label="Study sections" className="space-y-1">
+      {sections.map((section) => (
+        <Link
+          className={cn(
+            "block rounded-md px-2 py-1.5 text-sm leading-5 text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            section.depth === 3 && "ml-3 text-xs",
+          )}
+          href={`#${section.id}`}
+          key={section.id}
+        >
+          {section.title}
+        </Link>
+      ))}
+    </nav>
   );
 }
 
@@ -115,10 +156,14 @@ function MarkdownBlockView({ block }: { block: MarkdownBlock }) {
     const Tag = block.depth === 1 ? "h1" : block.depth === 2 ? "h2" : "h3";
     const className =
       block.depth === 2
-        ? "pt-3 text-2xl font-semibold tracking-normal"
-        : "pt-2 text-xl font-semibold tracking-normal";
+        ? "scroll-mt-24 pt-3 text-2xl font-semibold tracking-normal"
+        : "scroll-mt-24 pt-2 text-xl font-semibold tracking-normal";
 
-    return <Tag className={className}>{block.text}</Tag>;
+    return (
+      <Tag className={className} id={block.anchor}>
+        {block.text}
+      </Tag>
+    );
   }
 
   if (block.type === "paragraph") {

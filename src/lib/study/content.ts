@@ -4,8 +4,14 @@ import { getStudyDomains, type StudyDomain } from "./dashboard.ts";
 
 export type StudyLanguage = "en" | "zh";
 
+export type StudySection = {
+  id: string;
+  depth: 2 | 3;
+  title: string;
+};
+
 export type MarkdownBlock =
-  | { type: "heading"; depth: 1 | 2 | 3; text: string }
+  | { type: "heading"; depth: 1 | 2 | 3; text: string; anchor?: string }
   | { type: "paragraph"; text: string }
   | { type: "list"; ordered: boolean; items: string[] }
   | { type: "quote"; text: string }
@@ -18,6 +24,7 @@ export type StudyContent = {
   sourcePath: string;
   title: string;
   blocks: MarkdownBlock[];
+  sections: StudySection[];
 };
 
 const workspaceRoot = process.cwd();
@@ -41,6 +48,7 @@ export function getStudyContent(slug: string, language: StudyLanguage): StudyCon
   const absolutePath = resolveAllowedGuidePath(sourcePath);
   const markdown = readFileSync(absolutePath, "utf8");
   const blocks = renderMarkdownBlocks(markdown);
+  const sections = getStudySections(blocks);
   const title =
     blocks.find((block): block is Extract<MarkdownBlock, { type: "heading" }> => {
       return block.type === "heading" && block.depth === 1;
@@ -52,6 +60,7 @@ export function getStudyContent(slug: string, language: StudyLanguage): StudyCon
     sourcePath,
     title,
     blocks,
+    sections,
   };
 }
 
@@ -59,6 +68,7 @@ export function renderMarkdownBlocks(markdown: string): MarkdownBlock[] {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const blocks: MarkdownBlock[] = [];
   let paragraph: string[] = [];
+  const usedAnchors = new Map<string, number>();
 
   const flushParagraph = () => {
     if (paragraph.length === 0) {
@@ -104,11 +114,19 @@ export function renderMarkdownBlocks(markdown: string): MarkdownBlock[] {
     const heading = /^(#{1,3})\s+(.+)$/.exec(line);
     if (heading) {
       flushParagraph();
-      blocks.push({
+      const depth = heading[1].length as 1 | 2 | 3;
+      const text = heading[2].trim();
+      const block: MarkdownBlock = {
         type: "heading",
-        depth: heading[1].length as 1 | 2 | 3,
-        text: heading[2].trim(),
-      });
+        depth,
+        text,
+      };
+
+      if (depth === 2 || depth === 3) {
+        block.anchor = createUniqueAnchor(text, usedAnchors);
+      }
+
+      blocks.push(block);
       continue;
     }
 
@@ -147,6 +165,41 @@ export function renderMarkdownBlocks(markdown: string): MarkdownBlock[] {
 
   flushParagraph();
   return blocks;
+}
+
+function getStudySections(blocks: MarkdownBlock[]): StudySection[] {
+  return blocks.flatMap((block) => {
+    if (block.type !== "heading" || !block.anchor || (block.depth !== 2 && block.depth !== 3)) {
+      return [];
+    }
+
+    return [
+      {
+        id: block.anchor,
+        depth: block.depth,
+        title: block.text,
+      },
+    ];
+  });
+}
+
+function createUniqueAnchor(text: string, usedAnchors: Map<string, number>): string {
+  const baseAnchor = createAnchor(text);
+  const count = usedAnchors.get(baseAnchor) ?? 0;
+  usedAnchors.set(baseAnchor, count + 1);
+
+  return count === 0 ? baseAnchor : `${baseAnchor}-${count + 1}`;
+}
+
+function createAnchor(text: string): string {
+  const normalized = text
+    .toLowerCase()
+    .replace(/[<>]/g, " ")
+    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+    .trim()
+    .replace(/[\s-]+/g, "-");
+
+  return normalized || "section";
 }
 
 function resolveAllowedGuidePath(sourcePath: string): string {
