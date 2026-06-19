@@ -133,6 +133,13 @@ export default async function DashboardPage() {
                         <div>{domain.englishGuide}</div>
                         <div>{domain.chineseGuide}</div>
                       </div>
+                      <Link
+                        className={cn(buttonVariants({ variant: "link" }), "mt-3 h-auto px-0 text-sm")}
+                        href={`/study/${domain.slug}`}
+                      >
+                        Open reading page
+                        <ArrowRight className="size-4" aria-hidden="true" />
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>

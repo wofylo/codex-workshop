@@ -53,6 +53,57 @@ This is the current resume point for continuing the CCA-F exam prep app from Cod
   - `reason=signup`
   - `reason=profile`
 
+## Current Uncommitted Work
+
+As of 2026-06-19 11:56 +08:00, the workspace intentionally has uncommitted changes for the study reading page slice and this handoff refresh.
+
+Current working tree:
+
+```text
+ M docs/superpowers/HANDOFF.md
+ M package.json
+ M src/app/dashboard/page.tsx
+?? src/app/study/
+?? src/lib/study/content.test.ts
+?? src/lib/study/content.ts
+```
+
+Study reading page slice changes:
+
+- Added `src/lib/study/content.ts`:
+  - fixed allowlist lookup for the existing `CCA-F/*.md` guide files
+  - `getStudyDomainSlugs()`
+  - `getStudyDomainBySlug()`
+  - `getStudyContent()`
+  - `renderMarkdownBlocks()`
+  - simple React-safe Markdown block model; raw HTML is kept as text, not rendered through `dangerouslySetInnerHTML`
+- Added `src/lib/study/content.test.ts` and included it in `pnpm test`.
+- Added protected route `src/app/study/[domainSlug]/page.tsx`.
+- Added `generateStaticParams()` for the five domain slugs.
+- `/study/[domainSlug]` requires an approved active user via `requireApprovedUser()`.
+- Reading pages support `?lang=zh` for Traditional Chinese guide content; default is English.
+- Updated `/dashboard` domain cards with an `Open reading page` link.
+
+Verification already run after this slice:
+
+```text
+corepack pnpm test
+corepack pnpm lint
+corepack pnpm typecheck
+corepack pnpm build
+```
+
+Observed result:
+
+```text
+tests: 20 passed, 0 failed
+lint: exit 0
+typecheck: exit 0
+build: exit 0
+```
+
+The production app has not been redeployed with this reading page slice yet because the changes are still uncommitted and unpushed.
+
 ## Current Production Auth State
 
 As of 2026-06-18 21:23 +08:00, checked through server-side `@supabase/supabase-js` using local secrets without printing secret values:
@@ -73,11 +124,18 @@ path: /token
 grant_type: password
 ```
 
-Remaining manual production verification:
+Production auth verification completed on 2026-06-19 11:56 +08:00 through a direct HTTP form submission to the production login server action using the first admin account:
 
-1. Sign in at `https://codex-workshop-two.vercel.app/auth/login` with the first admin account.
-2. Verify `/dashboard` loads.
-3. Verify `/admin` loads.
+```text
+login_status=303
+login_location=/dashboard
+dashboard_status=200
+dashboard_has_welcome=True
+dashboard_has_admin_verified=True
+admin_status=200
+admin_has_user_management=True
+admin_has_admin_console=True
+```
 
 If sign-in fails with the generic `Sign in failed` page after account creation, check `auth.users.email_confirmed_at` / `confirmed_at`. In this setup, the first account existed and the profile was approved, but login still failed until the auth user was email-confirmed.
 
@@ -116,6 +174,7 @@ Expected build routes include:
 /auth/sign-up
 /auth/verify-email
 /dashboard
+/study/[domainSlug]
 ```
 
 Secret boundary scan:
@@ -426,6 +485,8 @@ Expected for approved non-admin users. Set `role = 'admin'` for the intended adm
 - `src/lib/supabase/admin.ts`: server-only admin Supabase client.
 - `src/lib/supabase/server.ts`: server Supabase client with cookies.
 - `src/lib/supabase/proxy.ts` and `src/proxy.ts`: Supabase session refresh.
+- `src/lib/study/content.ts`: fixed-file study guide loader and Markdown block parser.
+- `src/app/study/[domainSlug]/page.tsx`: protected domain reading page.
 - `supabase/migrations/*.sql`: database schema, RLS, and optimization migrations.
 - `docs/deployment/foundation.md`: deployment and first-admin notes.
 
@@ -444,9 +505,16 @@ d44e9f97 feat: prepare Supabase deploy foundation
 
 ## Next Recommended Work
 
-1. Verify `/dashboard` and `/admin` in production after the latest deploy from `main`.
-2. Verify admin user-management actions in production after the latest deploy from `main`.
-3. Build domain/section reading pages.
+1. Review the uncommitted study reading page slice.
+2. Optionally run verification again:
+   - `corepack pnpm test`
+   - `corepack pnpm lint`
+   - `corepack pnpm typecheck`
+   - placeholder-env `corepack pnpm build`
+3. Commit the reading page slice and handoff update.
+4. Push to `main` or merge through the preferred workflow so Vercel deploys it.
+5. After deploy, verify production `/study/agentic-architecture` while signed in as an approved admin.
+6. Verify admin user-management actions in production if not already done through the browser UI.
 
 Keep each slice small and verify with:
 
