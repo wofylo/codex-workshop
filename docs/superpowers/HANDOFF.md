@@ -7,7 +7,7 @@ This is the current resume point for continuing the CCA-F exam prep app from Cod
 - Workspace: `D:\Lab\codex-workshop`
 - Repo: `git@github.com:wofylo/codex-workshop.git`
 - Branch: `main`
-- Latest pushed commit before this handoff refresh: `be1fa472 docs: update CLI handoff`
+- Latest app feature commit: `9e5ecebf feat: add study reading pages`
 - Production URL: `https://codex-workshop-two.vercel.app/`
 - Latest Vercel deployment: `dpl_4X6jEGJd8SHMPydnDuVt4oRJAzzb`
 - Vercel project id: `prj_3Pb4cARgnOOI8PoMAOHgxPrsgjvi`
@@ -52,37 +52,30 @@ This is the current resume point for continuing the CCA-F exam prep app from Cod
   - `reason=login`
   - `reason=signup`
   - `reason=profile`
+- Study reading page slice:
+  - fixed allowlist lookup for the existing `CCA-F/*.md` guide files
+  - `src/lib/study/content.ts` exposes fixed guide loading and a simple React-safe Markdown block model
+  - protected route `src/app/study/[domainSlug]/page.tsx`
+  - `generateStaticParams()` for the five domain slugs
+  - `/study/[domainSlug]` requires an approved active user via `requireApprovedUser()`
+  - reading pages support `?lang=zh` for Traditional Chinese guide content; default is English
+  - `/dashboard` domain cards include an `Open reading page` link
 
-## Current Uncommitted Work
+## Current Workspace State
 
-As of 2026-06-19 11:56 +08:00, the workspace intentionally has uncommitted changes for the study reading page slice and this handoff refresh.
+As of 2026-06-19, the study reading page slice has been committed and pushed to `main`.
 
 Current working tree:
 
 ```text
- M docs/superpowers/HANDOFF.md
- M package.json
- M src/app/dashboard/page.tsx
-?? src/app/study/
-?? src/lib/study/content.test.ts
-?? src/lib/study/content.ts
+clean
 ```
 
-Study reading page slice changes:
+Study reading page commit:
 
-- Added `src/lib/study/content.ts`:
-  - fixed allowlist lookup for the existing `CCA-F/*.md` guide files
-  - `getStudyDomainSlugs()`
-  - `getStudyDomainBySlug()`
-  - `getStudyContent()`
-  - `renderMarkdownBlocks()`
-  - simple React-safe Markdown block model; raw HTML is kept as text, not rendered through `dangerouslySetInnerHTML`
-- Added `src/lib/study/content.test.ts` and included it in `pnpm test`.
-- Added protected route `src/app/study/[domainSlug]/page.tsx`.
-- Added `generateStaticParams()` for the five domain slugs.
-- `/study/[domainSlug]` requires an approved active user via `requireApprovedUser()`.
-- Reading pages support `?lang=zh` for Traditional Chinese guide content; default is English.
-- Updated `/dashboard` domain cards with an `Open reading page` link.
+```text
+9e5ecebf feat: add study reading pages
+```
 
 Verification already run after this slice:
 
@@ -102,7 +95,15 @@ typecheck: exit 0
 build: exit 0
 ```
 
-The production app has not been redeployed with this reading page slice yet because the changes are still uncommitted and unpushed.
+Production route verification after push:
+
+```text
+GET https://codex-workshop-two.vercel.app/study/agentic-architecture
+status=307
+location=/auth/login
+```
+
+This confirms the production route exists and the auth guard redirects unauthenticated requests. Vercel deployment-list API verification was not available with the current token scope; it returned `forbidden` for deployment listing.
 
 ## Current Production Auth State
 
@@ -493,6 +494,7 @@ Expected for approved non-admin users. Set `role = 'admin'` for the intended adm
 ## Recent Commits
 
 ```text
+9e5ecebf feat: add study reading pages
 5b2127bd fix: explain auth errors
 1a093aa3 feat: add auth gate pages
 51bf478a fix: optimize Supabase RLS policies
@@ -505,16 +507,10 @@ d44e9f97 feat: prepare Supabase deploy foundation
 
 ## Next Recommended Work
 
-1. Review the uncommitted study reading page slice.
-2. Optionally run verification again:
-   - `corepack pnpm test`
-   - `corepack pnpm lint`
-   - `corepack pnpm typecheck`
-   - placeholder-env `corepack pnpm build`
-3. Commit the reading page slice and handoff update.
-4. Push to `main` or merge through the preferred workflow so Vercel deploys it.
-5. After deploy, verify production `/study/agentic-architecture` while signed in as an approved admin.
-6. Verify admin user-management actions in production if not already done through the browser UI.
+1. Verify production `/study/agentic-architecture` while signed in as an approved admin.
+2. Verify the `?lang=zh` language toggle in production while authenticated.
+3. Verify admin user-management actions in production if not already done through the browser UI.
+4. Build the next study slice, such as section navigation, progress tracking, or quiz practice.
 
 Keep each slice small and verify with:
 
