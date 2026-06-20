@@ -2,11 +2,13 @@
 
 This is the short resume file for continuing the CCA-F exam prep app later from `D:\Lab\codex-workshop`. Use Traditional Chinese for general communication, keep commands and identifiers in English, and do not print secret values.
 
+For the full CLI handoff, see `docs/superpowers/HANDOFF.md`.
+
 ## Current State
 
 ### Snapshot
 
-The repository is on `main` and was clean when this handoff was written. The latest local and pushed commit is `be7be9c0 feat: add admin user management`. Production health was checked on 2026-06-18 23:34 +08:00 and returned `{"ok":true,"service":"cca-f-exam-prep"}`.
+The repository is on `main` and was clean when this handoff was written. The latest completed status before this root handoff refresh is `39b9d241 docs: record production section nav verification`.
 
 Key endpoints and resources:
 
@@ -14,48 +16,63 @@ Key endpoints and resources:
 |---|---|---|
 | Workspace | `D:\Lab\codex-workshop` | Main working directory |
 | Repo | `git@github.com:wofylo/codex-workshop.git` | Normal Git operations use SSH |
-| Branch | `main` | Push directly only when requested |
+| Branch | `main` | Currently synced with `origin/main` |
 | Production URL | `https://codex-workshop-two.vercel.app/` | Vercel production |
 | Supabase project ref | `ufqcfniaxmwwcwmrssfk` | Region `ap-northeast-1` |
 | Vercel project id | `prj_3Pb4cARgnOOI8PoMAOHgxPrsgjvi` | Team `team_lEkdAVKvWzUfDSPAQw13RsQs` |
 
 ### Secrets
 
-Secrets are stored locally at `C:\secrets\.env`. Do not print values. Available keys include `VERCEL_TOKEN`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+Secrets are stored locally at `C:\secrets\.env`. Do not print values. Known keys include:
+
+| Key | Use |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public Supabase browser/server key |
+| `SUPABASE_SECRET_KEY` | Server-only app secret key |
+| `SUPABASE_ACCESS_TOKEN` | Supabase CLI / Management API |
+| `VERCEL_TOKEN` | Vercel CLI / REST API |
+| `PROD_TEST_EMAIL` / `PROD_TEST_PASSWORD` | Production approved test account for authenticated checks |
 
 GitHub access uses SSH through `C:\Users\WofyLo\.ssh\github_wofylo.pub`; do not ask for a GitHub token for normal `git fetch`, `git pull`, or `git push`.
 
 ## Implemented
 
-### Auth And First Admin
+### Auth And Account Gates
 
-The auth gate is live with sign-up, login, account status pages, protected dashboard, and admin guard. The first production account exists, is email-confirmed, and has profile display name `wofy` with `role = admin`, `approval_status = approved`, and `is_deleted = false`.
+The auth gate is live with sign-up, login, account status pages, protected dashboard, and admin guard.
 
-Current known production auth state:
+Implemented routes:
 
-| Metric | Current value |
-|---|---:|
-| `auth.users` | 1 |
-| `public.profiles` | 1 |
-| active approved admins | 1 |
+| Route | Behavior |
+|---|---|
+| `/auth/sign-up` | Creates Supabase Auth user and server-side `public.profiles` row |
+| `/auth/login` | Email/password login |
+| `/auth/pending` | Pending approval state |
+| `/auth/rejected` | Rejected account state |
+| `/auth/deactivated` | Soft-deleted account state |
+| `/auth/verify-email` | Email confirmation required state |
+| `/auth/error?reason=...` | Reason-aware auth error copy |
+| `/dashboard` | Requires authenticated approved non-deleted profile |
+| `/admin` | Requires approved admin profile |
 
-The earlier login failure was caused by the auth user not being email-confirmed. It was fixed with the Supabase Admin API by setting `email_confirm=true`.
+The first production account has profile display name `wofy`, is email-confirmed, and is `admin` / `approved`.
 
 ### Dashboard
 
-`/dashboard` is no longer empty. It now shows a static CCA-F study cockpit with five exam domains, domain weights, difficulty, question estimates, next actions, bilingual guide file references, and an admin shortcut for approved admins.
+`/dashboard` shows a static CCA-F study cockpit with five exam domains, domain weights, difficulty, question estimates, next actions, bilingual guide file references, an admin shortcut for approved admins, and reading-page links.
 
-The static dashboard data lives in:
+Important files:
 
 | Description | Path |
 |---|---|
 | Dashboard page | `src/app/dashboard/page.tsx` |
-| Study dashboard metadata | `src/lib/study/dashboard.ts` |
+| Study domain metadata | `src/lib/study/dashboard.ts` |
 | Study dashboard tests | `src/lib/study/dashboard.test.ts` |
 
 ### Admin User Management
 
-`/admin` now includes user management v1. It lists profiles with auth email and email confirmation state, shows summary counts, and provides server actions for approval and account flags.
+`/admin` includes user management v1. It lists profiles with auth email and email confirmation state, shows summary counts, and provides server actions for approval and account flags.
 
 Implemented admin actions:
 
@@ -78,58 +95,116 @@ Important files:
 
 Mutations write `admin_audit_events`. The database trigger `private.prevent_last_active_admin_loss()` prevents removing the last active approved admin.
 
+### Study Reading Pages
+
+Protected reading pages are live at `/study/[domainSlug]`.
+
+Implemented behavior:
+
+| Feature | Status |
+|---|---|
+| Fixed allowlist loading for local `CCA-F/*.md` guides | Done |
+| English default guide rendering | Done |
+| Traditional Chinese via `?lang=zh` | Done |
+| `generateStaticParams()` for five domain slugs | Done |
+| Approved-user guard through `requireApprovedUser()` | Done |
+| Dashboard links into reading pages | Done |
+| React-safe Markdown block model without `dangerouslySetInnerHTML` | Done |
+
+Important files:
+
+| Description | Path |
+|---|---|
+| Study content loader | `src/lib/study/content.ts` |
+| Study content tests | `src/lib/study/content.test.ts` |
+| Study reading page | `src/app/study/[domainSlug]/page.tsx` |
+
+### Study Section Navigation
+
+Study pages include in-page section navigation.
+
+Implemented behavior:
+
+| Feature | Status |
+|---|---|
+| Stable anchors for Markdown `h2` and `h3` headings | Done |
+| Duplicate heading suffixes such as `overview-2` | Done |
+| Traditional Chinese heading anchors | Done |
+| `StudyContent.sections` for page rendering | Done |
+| Desktop sidebar section navigation | Done |
+| Mobile section navigation above the article | Done |
+| Section links match rendered heading `id` attributes | Verified in production |
+
 ## Verification
 
-### Commands Already Run
+### Local Verification
 
-The latest implementation was verified with the full local check suite before commit and push.
+Fresh verification after the section navigation slice:
 
-| Description | Command | Expected Result |
+| Description | Command | Result |
 |---|---|---|
-| Run tests | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm test` | 16 tests pass |
-| Run lint | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm lint` | ESLint exits 0 |
-| Run typecheck | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm typecheck` | TypeScript exits 0 |
-| Run production build | `$env:NEXT_PUBLIC_SUPABASE_URL='https://example.supabase.co'; $env:NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='placeholder'; $env:SUPABASE_SECRET_KEY='placeholder-secret'; $env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm build` | Next.js build exits 0 |
-| Check production health | `Invoke-WebRequest -Uri 'https://codex-workshop-two.vercel.app/api/health' -UseBasicParsing` | HTTP 200 with health JSON |
+| Run tests | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm test` | `23 passed, 0 failed` |
+| Run lint | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm lint` | exit 0 |
+| Run typecheck | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm typecheck` | exit 0 |
+| Run production build | placeholder Supabase env + `corepack pnpm build` | exit 0, includes `/study/[domainSlug]` |
 
-### Local Dev Server
+### Production Verification
 
-A local dev server was started during the session with secrets loaded from `C:\secrets\.env`. It responded at `http://127.0.0.1:3000` with HTTP 200. Dev server logs are ignored by `.gitignore` via `dev-server*.log`.
+Unauthenticated route check:
+
+```text
+GET https://codex-workshop-two.vercel.app/study/agentic-architecture
+status=307
+location=/auth/login
+```
+
+Authenticated section-navigation verification completed on 2026-06-20 using `PROD_TEST_EMAIL` / `PROD_TEST_PASSWORD` from `C:\secrets\.env` without printing secret values:
+
+```text
+login_status=303
+login_location=/dashboard
+dashboard_status=200
+dashboard_has_welcome=True
+study_en_status=200
+study_en_title_present=True
+study_en_has_sections_nav=True
+study_en_section_link_count=11
+study_en_missing_matching_ids=0
+study_en_has_language_toggle_to_zh=True
+study_zh_status=200
+study_zh_title_present=True
+study_zh_has_sections_nav=True
+study_zh_section_link_count=11
+study_zh_missing_matching_ids=0
+study_zh_has_language_toggle_to_en=True
+```
+
+Vercel deployment-list API verification was not available with the current token scope; it returned `forbidden`. Use route checks, Vercel dashboard, or a token with deployment-list permission when deployment IDs are required.
+
+## Recent Commits
+
+```text
+39b9d241 docs: record production section nav verification
+0319dc40 docs: refresh section navigation handoff
+4c553796 feat: add study section navigation
+0400a10f docs: design study section navigation
+aa70f809 docs: refresh CLI handoff
+9e5ecebf feat: add study reading pages
+```
 
 ## Next Work
 
-### Immediate Production Verification
+Recommended next slices:
 
-After Vercel finishes deploying `be7be9c0`, verify the new protected pages in production with the first admin account.
-
-| Description | URL | Expected Result |
+| Priority | Work | Notes |
 |---|---|---|
-| Sign in | `https://codex-workshop-two.vercel.app/auth/login` | Login succeeds with the first admin account |
-| Check dashboard | `https://codex-workshop-two.vercel.app/dashboard` | Static CCA-F study cockpit appears |
-| Check admin console | `https://codex-workshop-two.vercel.app/admin` | User management console appears |
-
-If `/dashboard` or `/admin` still shows old content, wait for Vercel deployment to finish or inspect the deployment.
-
-### Recommended Next Slice
-
-Build domain and section reading pages next. The database already has `study_domains` and `study_sections`, and local markdown guides exist under `CCA-F/`.
-
-Suggested scope:
-
-| Feature | Notes |
-|---|---|
-| `/study` | Domain list using existing metadata |
-| `/study/[domain]` | Domain overview with guide links or rendered markdown |
-| Markdown rendering | Start read-only from local `CCA-F/*.md`; avoid progress schema until reading UX is stable |
-| Dashboard links | Link each dashboard domain card to its study page |
-
-### Later Slices
-
-After reading pages, build progress tracking and quiz workflows. Those will require schema/RLS review, tests, and production verification.
+| 1 | Reading progress tracking | Decide whether to start with client storage or Supabase-backed progress schema/RLS |
+| 2 | Quiz practice | Requires question model, answer flow, scoring, and review behavior |
+| 3 | Production admin UI verification | Verify approve/reject/deactivate/restore/premium actions through browser UI if not already covered manually |
 
 ## Operational Notes
 
-Use Vercel CLI/API and Supabase CLI/API, not desktop plugins. Load tokens from `C:\secrets\.env` without printing values. If Vercel deployment list returns forbidden with the current token, rely on health checks and Vercel dashboard/manual verification unless API access is fixed.
+Use Vercel CLI/API and Supabase CLI/API, not desktop plugins. Load tokens from `C:\secrets\.env` without printing values.
 
 Before any new code changes:
 
@@ -138,5 +213,6 @@ Before any new code changes:
 | Confirm clean repo | `git status --short --branch` | `main...origin/main`, no changes |
 | Sync latest | `git pull --ff-only` | Already up to date or fast-forward |
 | Re-run checks after edits | `corepack pnpm test; corepack pnpm lint; corepack pnpm typecheck` | All pass |
+| Build before completion | placeholder Supabase env + `corepack pnpm build` | Next.js build exits 0 |
 
 Do not expose secret values in terminal output or documentation.
