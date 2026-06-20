@@ -101,7 +101,7 @@ typecheck: exit 0
 build: exit 0
 ```
 
-Local browser/dev-server smoke check was attempted, but this Windows sandbox blocked reliable background dev server startup through both `Start-Process` and Node `child_process`. The production build completed successfully; do authenticated browser verification after deployment.
+Local browser/dev-server smoke check was attempted, but this Windows sandbox blocked reliable background dev server startup through both `Start-Process` and Node `child_process`. The production build completed successfully.
 
 Production route verification after push:
 
@@ -112,6 +112,27 @@ location=/auth/login
 ```
 
 This confirms the production route exists and the auth guard redirects unauthenticated requests. Vercel deployment-list API verification was not available with the current token scope; it returned `forbidden` for deployment listing.
+
+Production authenticated section-navigation verification completed on 2026-06-20 using `PROD_TEST_EMAIL` / `PROD_TEST_PASSWORD` from `C:\secrets\.env` without printing secret values:
+
+```text
+login_status=303
+login_location=/dashboard
+dashboard_status=200
+dashboard_has_welcome=True
+study_en_status=200
+study_en_title_present=True
+study_en_has_sections_nav=True
+study_en_section_link_count=11
+study_en_missing_matching_ids=0
+study_en_has_language_toggle_to_zh=True
+study_zh_status=200
+study_zh_title_present=True
+study_zh_has_sections_nav=True
+study_zh_section_link_count=11
+study_zh_missing_matching_ids=0
+study_zh_has_language_toggle_to_en=True
+```
 
 ## Current Production Auth State
 
@@ -516,10 +537,8 @@ d44e9f97 feat: prepare Supabase deploy foundation
 
 ## Next Recommended Work
 
-1. Verify production `/study/agentic-architecture` while signed in as an approved admin.
-2. Verify the section navigation links jump to matching headings in production.
-3. Verify the `?lang=zh` language toggle and section navigation in production while authenticated.
-4. Build the next study slice, such as reading progress tracking or quiz practice.
+1. Build the next study slice, such as reading progress tracking or quiz practice.
+2. Verify admin user-management actions in production through the browser UI if not already covered manually.
 
 Keep each slice small and verify with:
 
