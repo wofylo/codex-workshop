@@ -32,7 +32,7 @@
 - Produces table `public.study_progress`
 - Produces generated type entry `Database["public"]["Tables"]["study_progress"]`
 
-- [ ] **Step 1: Write migration**
+- [x] **Step 1: Write migration**
 
 Create `supabase/migrations/202606210001_study_progress.sql`:
 
@@ -94,11 +94,11 @@ create policy "Users can delete own study progress"
   using ((select auth.uid()) = user_id);
 ```
 
-- [ ] **Step 2: Update database types**
+- [x] **Step 2: Update database types**
 
 Use Supabase type generation if available. If CLI access is blocked, update `src/lib/supabase/database.types.ts` manually to include `study_progress` with `Row`, `Insert`, `Update`, and `Relationships` matching the migration.
 
-- [ ] **Step 3: Verify SQL shape**
+- [x] **Step 3: Verify SQL shape**
 
 Run:
 
@@ -121,7 +121,7 @@ Expected: migration includes table, unique constraint, indexes, RLS enablement, 
 - Produces `buildStudyProgressState(sections, rows)`
 - Produces `buildStudyProgressMutation(input)`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `src/lib/study/progress.test.ts` with tests for:
 
@@ -192,7 +192,7 @@ test("buildStudyProgressMutation creates read and unread upsert payloads", () =>
 
 Add `src/lib/study/progress.test.ts` to the `test` script in `package.json`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -203,7 +203,7 @@ corepack pnpm test
 
 Expected: FAIL because `src/lib/study/progress.ts` does not exist.
 
-- [ ] **Step 3: Implement helper**
+- [x] **Step 3: Implement helper**
 
 Create `src/lib/study/progress.ts` with:
 
@@ -213,7 +213,7 @@ Create `src/lib/study/progress.ts` with:
 
 The helper must ignore stale row section ids that are not present in current `StudySection[]`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run:
 
@@ -235,7 +235,7 @@ Expected: PASS with all tests green.
 - Consumes `buildStudyProgressMutation()`
 - Produces server action `setSectionReadAction(formData: FormData)`
 
-- [ ] **Step 1: Add server action**
+- [x] **Step 1: Add server action**
 
 Create `src/app/study/[domainSlug]/actions.ts`.
 
@@ -249,7 +249,7 @@ Action behavior:
 - use `createServerSupabaseClient()` so RLS applies
 - `revalidatePath(`/study/${domainSlug}`)`
 
-- [ ] **Step 2: Fetch progress on page**
+- [x] **Step 2: Fetch progress on page**
 
 Update `src/app/study/[domainSlug]/page.tsx`:
 
@@ -257,7 +257,7 @@ Update `src/app/study/[domainSlug]/page.tsx`:
 - after `content` exists, query `study_progress` rows for `profile.id`, `content.domain.slug`, and `content.language`
 - compute progress state with `buildStudyProgressState(content.sections, rows)`
 
-- [ ] **Step 3: Render progress UI**
+- [x] **Step 3: Render progress UI**
 
 Update `StudySectionNavigation`:
 
@@ -267,7 +267,7 @@ Update `StudySectionNavigation`:
 - use separate focus targets for link and button
 - include hidden inputs: `domain_slug`, `language`, `section_id`, `read`
 
-- [ ] **Step 4: Run static verification**
+- [x] **Step 4: Run static verification**
 
 Run:
 
@@ -289,13 +289,13 @@ Expected: all commands exit 0.
 **Interfaces:**
 - Documents applied migration, verification commands, and production smoke result.
 
-- [ ] **Step 1: Apply migration remotely**
+- [x] **Step 1: Apply migration remotely**
 
 Load `SUPABASE_ACCESS_TOKEN` from `C:\secrets\.env` without printing it. Use Supabase CLI or Management API to apply `202606210001_study_progress.sql` to project `ufqcfniaxmwwcwmrssfk`.
 
 Expected: remote migration appears in migration list or SQL verification confirms `public.study_progress` exists with RLS enabled.
 
-- [ ] **Step 2: Run full verification**
+- [x] **Step 2: Run full verification**
 
 Run:
 
@@ -312,7 +312,7 @@ corepack pnpm build
 
 Expected: all commands exit 0.
 
-- [ ] **Step 3: Commit and push implementation**
+- [x] **Step 3: Commit and push implementation**
 
 Run:
 
@@ -322,7 +322,7 @@ git commit -m "feat: add reading progress tracking"
 git push origin main
 ```
 
-- [ ] **Step 4: Production authenticated smoke check**
+- [x] **Step 4: Production authenticated smoke check**
 
 Use `PROD_TEST_EMAIL` / `PROD_TEST_PASSWORD` from `C:\secrets\.env` without printing values:
 
@@ -333,7 +333,7 @@ Use `PROD_TEST_EMAIL` / `PROD_TEST_PASSWORD` from `C:\secrets\.env` without prin
 - reload and verify read count persists
 - toggle the same section unread to leave the test account clean
 
-- [ ] **Step 5: Update handoffs**
+- [x] **Step 5: Update handoffs**
 
 Update `handoff.md` and `docs/superpowers/HANDOFF.md` with:
 
@@ -350,4 +350,3 @@ git add handoff.md docs/superpowers/HANDOFF.md
 git commit -m "docs: record reading progress verification"
 git push origin main
 ```
-

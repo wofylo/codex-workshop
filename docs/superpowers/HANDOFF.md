@@ -7,7 +7,7 @@ This is the current resume point for continuing the CCA-F exam prep app from Cod
 - Workspace: `D:\Lab\codex-workshop`
 - Repo: `git@github.com:wofylo/codex-workshop.git`
 - Branch: `main`
-- Latest app feature commit: `4c55379 feat: add study section navigation`
+- Latest app feature commit: `5c14a70 feat: add reading progress tracking`
 - Production URL: `https://codex-workshop-two.vercel.app/`
 - Latest Vercel deployment: `dpl_4X6jEGJd8SHMPydnDuVt4oRJAzzb`
 - Vercel project id: `prj_3Pb4cARgnOOI8PoMAOHgxPrsgjvi`
@@ -66,10 +66,16 @@ This is the current resume point for continuing the CCA-F exam prep app from Cod
   - duplicate headings receive deterministic suffixes such as `overview-2`
   - Traditional Chinese headings produce stable non-empty anchors
   - study pages render mobile and desktop section navigation with matching heading `id` attributes
+- Reading progress tracking slice:
+  - remote migration `202606210001 study_progress` applied through Supabase Management API
+  - `public.study_progress` stores per-user, per-domain, per-language, per-section read state
+  - RLS is enabled with four user-scoped policies
+  - study pages show read-count progress and read/unread controls in the section navigation
+  - progress persists across reloads and is cleaned up by toggling unread
 
 ## Current Workspace State
 
-As of 2026-06-19, the study section navigation slice has been committed and pushed to `main`.
+As of 2026-06-21, the reading progress tracking slice has been committed and pushed to `main`.
 
 Current working tree:
 
@@ -80,10 +86,10 @@ clean
 Latest feature commit:
 
 ```text
-4c55379 feat: add study section navigation
+5c14a70 feat: add reading progress tracking
 ```
 
-Verification already run after this section navigation slice:
+Verification already run after this reading progress slice:
 
 ```text
 corepack pnpm test
@@ -95,7 +101,7 @@ corepack pnpm build
 Observed result:
 
 ```text
-tests: 23 passed, 0 failed
+tests: 26 passed, 0 failed
 lint: exit 0
 typecheck: exit 0
 build: exit 0
@@ -132,6 +138,31 @@ study_zh_has_sections_nav=True
 study_zh_section_link_count=11
 study_zh_missing_matching_ids=0
 study_zh_has_language_toggle_to_en=True
+```
+
+Remote migration verification completed on 2026-06-21:
+
+```text
+table_exists=True
+migration_exists=True
+rls_enabled=True
+policy_count=4
+```
+
+Production authenticated reading-progress verification completed on 2026-06-21 using `PROD_TEST_EMAIL` / `PROD_TEST_PASSWORD` from `C:\secrets\.env` without printing secret values:
+
+```text
+login_status=303
+target_section_id=weight-27-hardest-domain-16-questions
+before_unique_read_count=0
+mark_read_status=200
+after_unique_read_count=1
+reload_unique_read_count=1
+cleanup_status=200
+after_cleanup_unique_read_count=0
+read_incremented=True
+persisted_after_reload=True
+cleanup_restored=True
 ```
 
 ## Current Production Auth State
@@ -523,6 +554,7 @@ Expected for approved non-admin users. Set `role = 'admin'` for the intended adm
 ## Recent Commits
 
 ```text
+5c14a70 feat: add reading progress tracking
 4c55379 feat: add study section navigation
 9e5ecebf feat: add study reading pages
 5b2127bd fix: explain auth errors
@@ -537,8 +569,9 @@ d44e9f97 feat: prepare Supabase deploy foundation
 
 ## Next Recommended Work
 
-1. Build the next study slice, such as reading progress tracking or quiz practice.
-2. Verify admin user-management actions in production through the browser UI if not already covered manually.
+1. Build quiz practice.
+2. Add dashboard-level progress summaries if desired.
+3. Verify admin user-management actions in production through the browser UI if not already covered manually.
 
 Keep each slice small and verify with:
 

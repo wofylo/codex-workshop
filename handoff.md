@@ -8,7 +8,7 @@ For the full CLI handoff, see `docs/superpowers/HANDOFF.md`.
 
 ### Snapshot
 
-The repository is on `main` and was clean when this handoff was written. The latest completed status before this root handoff refresh is `39b9d241 docs: record production section nav verification`.
+The repository is on `main` and was clean when this handoff was written. The latest completed feature before this root handoff refresh is `5c14a70 feat: add reading progress tracking`.
 
 Key endpoints and resources:
 
@@ -135,15 +135,31 @@ Implemented behavior:
 | Mobile section navigation above the article | Done |
 | Section links match rendered heading `id` attributes | Verified in production |
 
+### Reading Progress Tracking
+
+Study pages include Supabase-backed section-level progress tracking.
+
+Implemented behavior:
+
+| Feature | Status |
+|---|---|
+| Remote migration `202606210001 study_progress` | Applied |
+| `public.study_progress` table | Done |
+| User-scoped RLS policies | Done, 4 policies verified |
+| Per-user/domain/language/section read state | Done |
+| Read-count summary on study pages | Done |
+| Mark read/unread controls in section navigation | Done |
+| Production persistence smoke check | Verified |
+
 ## Verification
 
 ### Local Verification
 
-Fresh verification after the section navigation slice:
+Fresh verification after the reading progress slice:
 
 | Description | Command | Result |
 |---|---|---|
-| Run tests | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm test` | `23 passed, 0 failed` |
+| Run tests | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm test` | `26 passed, 0 failed` |
 | Run lint | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm lint` | exit 0 |
 | Run typecheck | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm typecheck` | exit 0 |
 | Run production build | placeholder Supabase env + `corepack pnpm build` | exit 0, includes `/study/[domainSlug]` |
@@ -179,11 +195,39 @@ study_zh_missing_matching_ids=0
 study_zh_has_language_toggle_to_en=True
 ```
 
+Remote migration verification completed on 2026-06-21:
+
+```text
+table_exists=True
+migration_exists=True
+rls_enabled=True
+policy_count=4
+```
+
+Authenticated reading-progress verification completed on 2026-06-21 using `PROD_TEST_EMAIL` / `PROD_TEST_PASSWORD` from `C:\secrets\.env` without printing secret values:
+
+```text
+login_status=303
+target_section_id=weight-27-hardest-domain-16-questions
+before_unique_read_count=0
+mark_read_status=200
+after_unique_read_count=1
+reload_unique_read_count=1
+cleanup_status=200
+after_cleanup_unique_read_count=0
+read_incremented=True
+persisted_after_reload=True
+cleanup_restored=True
+```
+
 Vercel deployment-list API verification was not available with the current token scope; it returned `forbidden`. Use route checks, Vercel dashboard, or a token with deployment-list permission when deployment IDs are required.
 
 ## Recent Commits
 
 ```text
+5c14a707 feat: add reading progress tracking
+6dff14d7 docs: plan reading progress tracking
+76078f29 docs: design reading progress tracking
 39b9d241 docs: record production section nav verification
 0319dc40 docs: refresh section navigation handoff
 4c553796 feat: add study section navigation
@@ -198,8 +242,8 @@ Recommended next slices:
 
 | Priority | Work | Notes |
 |---|---|---|
-| 1 | Reading progress tracking | Decide whether to start with client storage or Supabase-backed progress schema/RLS |
-| 2 | Quiz practice | Requires question model, answer flow, scoring, and review behavior |
+| 1 | Quiz practice | Requires question model, answer flow, scoring, and review behavior |
+| 2 | Dashboard progress summaries | Use `study_progress` to show domain-level progress on `/dashboard` |
 | 3 | Production admin UI verification | Verify approve/reject/deactivate/restore/premium actions through browser UI if not already covered manually |
 
 ## Operational Notes
