@@ -517,6 +517,56 @@ export type Database = {
         }
         Relationships: []
       }
+      study_progress: {
+        Row: {
+          created_at: string
+          domain_slug: string
+          id: string
+          is_read: boolean
+          language: string
+          last_viewed_at: string | null
+          read_at: string | null
+          section_id: string
+          section_title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          domain_slug: string
+          id?: string
+          is_read?: boolean
+          language: string
+          last_viewed_at?: string | null
+          read_at?: string | null
+          section_id: string
+          section_title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          domain_slug?: string
+          id?: string
+          is_read?: boolean
+          language?: string
+          last_viewed_at?: string | null
+          read_at?: string | null
+          section_id?: string
+          section_title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_sections: {
         Row: {
           created_at: string

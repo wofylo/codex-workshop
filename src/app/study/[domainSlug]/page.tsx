@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BookOpenCheck, Languages } from "lucide-react";
+import { ArrowLeft, BookOpenCheck, CheckCircle2, Circle, Languages } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { setSectionReadAction } from "@/app/study/[domainSlug]/actions";
 import { requireApprovedUser } from "@/lib/auth/guards";
 import {
   getStudyContent,
@@ -18,6 +19,12 @@ import {
   type StudyLanguage,
   type StudySection,
 } from "@/lib/study/content";
+import {
+  buildStudyProgressState,
+  type StudyProgressRow,
+  type StudyProgressState,
+} from "@/lib/study/progress";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type StudyPageProps = {
@@ -34,7 +41,7 @@ export function generateStaticParams() {
 }
 
 export default async function StudyDomainPage({ params, searchParams }: StudyPageProps) {
-  await requireApprovedUser();
+  const profile = await requireApprovedUser();
 
   const { domainSlug } = await params;
   const query = await searchParams;
@@ -45,6 +52,13 @@ export default async function StudyDomainPage({ params, searchParams }: StudyPag
   if (!content) {
     notFound();
   }
+
+  const progressRows = await getStudyProgressRows(
+    profile.id,
+    content.domain.slug,
+    content.language,
+  );
+  const progressState = buildStudyProgressState(content.sections, progressRows);
 
   return (
     <main className="min-h-svh bg-background text-foreground">
@@ -67,8 +81,14 @@ export default async function StudyDomainPage({ params, searchParams }: StudyPag
           {content.sections.length > 0 ? (
             <div className="mb-5 rounded-lg border border-border bg-card/92 p-4 lg:hidden">
               <h2 className="text-sm font-semibold tracking-normal">Sections</h2>
+              <ProgressSummary progressState={progressState} />
               <div className="mt-3">
-                <StudySectionNavigation sections={content.sections} />
+                <StudySectionNavigation
+                  domainSlug={content.domain.slug}
+                  language={content.language}
+                  progressState={progressState}
+                  sections={content.sections}
+                />
               </div>
             </div>
           ) : null}
@@ -117,14 +137,22 @@ export default async function StudyDomainPage({ params, searchParams }: StudyPag
 
           {content.sections.length > 0 ? (
             <Card className="hidden rounded-lg bg-card/92 lg:block">
-              <CardHeader>
-                <CardTitle className="text-lg">Sections</CardTitle>
-                <CardDescription>Jump within this guide.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StudySectionNavigation sections={content.sections} />
-              </CardContent>
-            </Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Sections</CardTitle>
+              <CardDescription>Jump within this guide.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ProgressSummary progressState={progressState} />
+                <div className="mt-3">
+                  <StudySectionNavigation
+                    domainSlug={content.domain.slug}
+                    language={content.language}
+                    progressState={progressState}
+                    sections={content.sections}
+                  />
+                </div>
+            </CardContent>
+          </Card>
           ) : null}
         </aside>
       </section>
@@ -132,21 +160,100 @@ export default async function StudyDomainPage({ params, searchParams }: StudyPag
   );
 }
 
-function StudySectionNavigation({ sections }: { sections: StudySection[] }) {
+async function getStudyProgressRows(
+  userId: string,
+  domainSlug: string,
+  language: StudyLanguage,
+): Promise<StudyProgressRow[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("study_progress")
+    .select("section_id, section_title, is_read, read_at")
+    .eq("user_id", userId)
+    .eq("domain_slug", domainSlug)
+    .eq("language", language);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
+function ProgressSummary({ progressState }: { progressState: StudyProgressState }) {
+  const { percentage, readSections, totalSections } = progressState.summary;
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span>{readSections} / {totalSections} read</span>
+        <span>{percentage}%</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${percentage}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function StudySectionNavigation({
+  domainSlug,
+  language,
+  progressState,
+  sections,
+}: {
+  domainSlug: string;
+  language: StudyLanguage;
+  progressState: StudyProgressState;
+  sections: StudySection[];
+}) {
   return (
     <nav aria-label="Study sections" className="space-y-1">
-      {sections.map((section) => (
-        <Link
-          className={cn(
-            "block rounded-md px-2 py-1.5 text-sm leading-5 text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            section.depth === 3 && "ml-3 text-xs",
-          )}
-          href={`#${section.id}`}
-          key={section.id}
-        >
-          {section.title}
-        </Link>
-      ))}
+      {sections.map((section) => {
+        const progress = progressState.bySectionId[section.id];
+        const isRead = progress?.isRead === true;
+
+        return (
+          <div
+            className={cn(
+              "grid grid-cols-[1fr_auto] items-center gap-2 rounded-md",
+              section.depth === 3 && "ml-3",
+            )}
+            key={section.id}
+          >
+            <Link
+              className={cn(
+                "block rounded-md px-2 py-1.5 text-sm leading-5 text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                section.depth === 3 && "text-xs",
+                isRead && "text-muted-foreground/70 line-through decoration-muted-foreground/40",
+              )}
+              href={`#${section.id}`}
+            >
+              {section.title}
+            </Link>
+            <form action={setSectionReadAction}>
+              <input name="domain_slug" type="hidden" value={domainSlug} />
+              <input name="language" type="hidden" value={language} />
+              <input name="section_id" type="hidden" value={section.id} />
+              <input name="read" type="hidden" value={isRead ? "false" : "true"} />
+              <button
+                aria-label={`Mark ${section.title} as ${isRead ? "unread" : "read"}`}
+                className={cn(
+                  "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  isRead && "text-primary",
+                )}
+                type="submit"
+              >
+                {isRead ? (
+                  <CheckCircle2 className="size-4" aria-hidden="true" />
+                ) : (
+                  <Circle className="size-4" aria-hidden="true" />
+                )}
+              </button>
+            </form>
+          </div>
+        );
+      })}
     </nav>
   );
 }
