@@ -1,201 +1,157 @@
 # CCA-F Exam Prep Handoff
 
-This is the short resume file for continuing the CCA-F exam prep app later from `D:\Lab\codex-workshop`. Use Traditional Chinese for general communication, keep commands and identifiers in English, and do not print secret values.
+This is the short handoff for another coding agent picking up the CCA-F exam prep app from `D:\Lab\codex-workshop`. The full operational handoff is `docs/superpowers/HANDOFF.md`.
 
-For the full CLI handoff, see `docs/superpowers/HANDOFF.md`.
+Use Traditional Chinese for user-facing conversation. Keep commands, file paths, env vars, package names, and code identifiers in English. Do not print secret values.
 
-## Current State
+## Current Reality
 
-### Snapshot
+The project is deployed and has a working auth/admin/study-reading foundation, but it is not yet a useful exam-prep product. The main missing product value is quiz practice: questions, answer flow, scoring, review, and progress summaries. Do not spend more time polishing the current static reading pages unless it directly supports quiz practice.
 
-The repository is on `main` and was clean when this handoff was written. The latest completed feature before this root handoff refresh is `5c14a70 feat: add reading progress tracking`.
-
-Key endpoints and resources:
-
-| Description | Value | Notes |
-|---|---|---|
-| Workspace | `D:\Lab\codex-workshop` | Main working directory |
-| Repo | `git@github.com:wofylo/codex-workshop.git` | Normal Git operations use SSH |
-| Branch | `main` | Currently synced with `origin/main` |
-| Production URL | `https://codex-workshop-two.vercel.app/` | Vercel production |
-| Supabase project ref | `ufqcfniaxmwwcwmrssfk` | Region `ap-northeast-1` |
-| Vercel project id | `prj_3Pb4cARgnOOI8PoMAOHgxPrsgjvi` | Team `team_lEkdAVKvWzUfDSPAQw13RsQs` |
-
-### Secrets
-
-Secrets are stored locally at `C:\secrets\.env`. Do not print values. Known keys include:
-
-| Key | Use |
+| Item | Value |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public Supabase browser/server key |
-| `SUPABASE_SECRET_KEY` | Server-only app secret key |
-| `SUPABASE_ACCESS_TOKEN` | Supabase CLI / Management API |
-| `VERCEL_TOKEN` | Vercel CLI / REST API |
-| `PROD_TEST_EMAIL` / `PROD_TEST_PASSWORD` | Production approved test account for authenticated checks |
+| Workspace | `D:\Lab\codex-workshop` |
+| Repo | `git@github.com:wofylo/codex-workshop.git` |
+| Branch | `main` |
+| Production URL | `https://codex-workshop-two.vercel.app/` |
+| Supabase project ref | `ufqcfniaxmwwcwmrssfk` |
+| Supabase URL | `https://ufqcfniaxmwwcwmrssfk.supabase.co` |
+| Supabase region | `ap-northeast-1` |
+| Vercel project id | `prj_3Pb4cARgnOOI8PoMAOHgxPrsgjvi` |
+| Vercel team id | `team_lEkdAVKvWzUfDSPAQw13RsQs` |
 
-GitHub access uses SSH through `C:\Users\WofyLo\.ssh\github_wofylo.pub`; do not ask for a GitHub token for normal `git fetch`, `git pull`, or `git push`.
+Latest known relevant commits:
+
+```text
+2889eb17 docs: record reading progress verification
+5c14a707 feat: add reading progress tracking
+6dff14d7 docs: plan reading progress tracking
+76078f29 docs: design reading progress tracking
+```
+
+## Secrets
+
+Secrets are local only at:
+
+```text
+C:\secrets\.env
+```
+
+Known keys:
+
+| Key | Purpose |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Browser/server Supabase URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe Supabase key |
+| `SUPABASE_SECRET_KEY` | Server-only Supabase key |
+| `SUPABASE_ACCESS_TOKEN` | Supabase CLI/API |
+| `VERCEL_TOKEN` | Vercel CLI/API |
+| `PROD_TEST_EMAIL` / `PROD_TEST_PASSWORD` | Production approved test account |
+
+GitHub normal git access uses SSH, not a GitHub token:
+
+```text
+C:\Users\WofyLo\.ssh\github_wofylo.pub
+```
 
 ## Implemented
 
-### Auth And Account Gates
-
-The auth gate is live with sign-up, login, account status pages, protected dashboard, and admin guard.
-
-Implemented routes:
-
-| Route | Behavior |
+| Area | Status |
 |---|---|
-| `/auth/sign-up` | Creates Supabase Auth user and server-side `public.profiles` row |
-| `/auth/login` | Email/password login |
-| `/auth/pending` | Pending approval state |
-| `/auth/rejected` | Rejected account state |
-| `/auth/deactivated` | Soft-deleted account state |
-| `/auth/verify-email` | Email confirmation required state |
-| `/auth/error?reason=...` | Reason-aware auth error copy |
-| `/dashboard` | Requires authenticated approved non-deleted profile |
-| `/admin` | Requires approved admin profile |
+| Next.js app foundation | Done, App Router, TypeScript, Tailwind, shadcn-style components |
+| CI | Partial, GitHub Actions runs `pnpm lint` and `pnpm typecheck` only |
+| Vercel production deploy | Done through Git integration / Vercel project |
+| Supabase schema | Done for auth/profile/admin/progress foundation |
+| Auth pages | Done: sign up, login, pending, rejected, deactivated, verify-email, reason-aware error |
+| Approval gate | Done: `/dashboard` requires approved active profile |
+| Admin UI | Basic user management only |
+| Study dashboard | Static five-domain cockpit only |
+| Study reading pages | Protected markdown reading pages with English/Traditional Chinese guides |
+| Section navigation | Done for `h2`/`h3` headings |
+| Reading progress | Basic section read/unread persistence |
 
-The first production account has profile display name `wofy`, is email-confirmed, and is `admin` / `approved`.
+## Not Yet Useful Enough
 
-### Dashboard
+The project needs exam-practice functionality before it is meaningfully useful.
 
-`/dashboard` shows a static CCA-F study cockpit with five exam domains, domain weights, difficulty, question estimates, next actions, bilingual guide file references, an admin shortcut for approved admins, and reading-page links.
+Recommended next priority:
 
-Important files:
-
-| Description | Path |
-|---|---|
-| Dashboard page | `src/app/dashboard/page.tsx` |
-| Study domain metadata | `src/lib/study/dashboard.ts` |
-| Study dashboard tests | `src/lib/study/dashboard.test.ts` |
-
-### Admin User Management
-
-`/admin` includes user management v1. It lists profiles with auth email and email confirmation state, shows summary counts, and provides server actions for approval and account flags.
-
-Implemented admin actions:
-
-| Action | Effect |
-|---|---|
-| Approve | Sets `approval_status = approved`, `approved_at`, and `approved_by` |
-| Reject | Sets `approval_status = rejected`, `rejected_at`, and `rejected_by` |
-| Deactivate | Soft-deletes by setting `is_deleted = true`, `deleted_at`, and `deleted_by` |
-| Restore | Clears soft-delete fields |
-| Toggle premium | Sets `is_premium` true or false |
-
-Important files:
-
-| Description | Path |
-|---|---|
-| Admin page | `src/app/admin/page.tsx` |
-| Admin server actions | `src/app/admin/actions.ts` |
-| Admin profile helpers | `src/lib/admin/profiles.ts` |
-| Admin helper tests | `src/lib/admin/profiles.test.ts` |
-
-Mutations write `admin_audit_events`. The database trigger `private.prevent_last_active_admin_loss()` prevents removing the last active approved admin.
-
-### Study Reading Pages
-
-Protected reading pages are live at `/study/[domainSlug]`.
-
-Implemented behavior:
-
-| Feature | Status |
-|---|---|
-| Fixed allowlist loading for local `CCA-F/*.md` guides | Done |
-| English default guide rendering | Done |
-| Traditional Chinese via `?lang=zh` | Done |
-| `generateStaticParams()` for five domain slugs | Done |
-| Approved-user guard through `requireApprovedUser()` | Done |
-| Dashboard links into reading pages | Done |
-| React-safe Markdown block model without `dangerouslySetInnerHTML` | Done |
-
-Important files:
-
-| Description | Path |
-|---|---|
-| Study content loader | `src/lib/study/content.ts` |
-| Study content tests | `src/lib/study/content.test.ts` |
-| Study reading page | `src/app/study/[domainSlug]/page.tsx` |
-
-### Study Section Navigation
-
-Study pages include in-page section navigation.
-
-Implemented behavior:
-
-| Feature | Status |
-|---|---|
-| Stable anchors for Markdown `h2` and `h3` headings | Done |
-| Duplicate heading suffixes such as `overview-2` | Done |
-| Traditional Chinese heading anchors | Done |
-| `StudyContent.sections` for page rendering | Done |
-| Desktop sidebar section navigation | Done |
-| Mobile section navigation above the article | Done |
-| Section links match rendered heading `id` attributes | Verified in production |
-
-### Reading Progress Tracking
-
-Study pages include Supabase-backed section-level progress tracking.
-
-Implemented behavior:
-
-| Feature | Status |
-|---|---|
-| Remote migration `202606210001 study_progress` | Applied |
-| `public.study_progress` table | Done |
-| User-scoped RLS policies | Done, 4 policies verified |
-| Per-user/domain/language/section read state | Done |
-| Read-count summary on study pages | Done |
-| Mark read/unread controls in section navigation | Done |
-| Production persistence smoke check | Verified |
-
-## Verification
-
-### Local Verification
-
-Fresh verification after the reading progress slice:
-
-| Description | Command | Result |
+| Priority | Work | Why |
 |---|---|---|
-| Run tests | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm test` | `26 passed, 0 failed` |
-| Run lint | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm lint` | exit 0 |
-| Run typecheck | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm typecheck` | exit 0 |
-| Run production build | placeholder Supabase env + `corepack pnpm build` | exit 0, includes `/study/[domainSlug]` |
+| 1 | Quiz practice MVP | This is the core value missing from the product |
+| 2 | Attempt scoring and review | Makes practice measurable and repeatable |
+| 3 | Dashboard progress summaries | Surface useful progress beyond reading completion |
+| 4 | CI hardening | Add tests/build to CI so deploys are safer |
+| 5 | Admin production UI verification | Existing admin mutations need browser-level verification |
 
-### Production Verification
+## Important Architecture
 
-Unauthenticated route check:
+| Layer | Files |
+|---|---|
+| Routes | `src/app/**` |
+| Auth guards | `src/lib/auth/guards.ts`, `src/lib/auth/profiles.ts`, `src/lib/auth/account-status.ts` |
+| Supabase clients | `src/lib/supabase/browser.ts`, `src/lib/supabase/server.ts`, `src/lib/supabase/admin.ts` |
+| Study domain metadata | `src/lib/study/dashboard.ts` |
+| Study markdown loader | `src/lib/study/content.ts` |
+| Study progress helper | `src/lib/study/progress.ts` |
+| Admin helpers | `src/lib/admin/profiles.ts` |
+| UI primitives | `src/components/ui/*` |
+| DB migrations | `supabase/migrations/*.sql` |
+| Study source content | `CCA-F/*.md` |
+
+## Deploy Web
+
+Production is Vercel. The intended deployment path is push/merge to `main`; Vercel builds the Next.js app from the repo root.
+
+| Description | Command | Expected Result |
+|---|---|---|
+| Check repo state | `git status --short --branch` | Clean `main...origin/main` |
+| Run local checks | `corepack pnpm test; corepack pnpm lint; corepack pnpm typecheck` | All pass |
+| Build locally | `corepack pnpm build` with required env vars | Next.js build exits 0 |
+| Push to production branch | `git push origin main` | Vercel production deploy starts |
+| Inspect deploy | `npx vercel inspect https://codex-workshop-two.vercel.app --token $env:VERCEL_TOKEN` | Shows deployment metadata |
+
+Production Vercel env must include:
 
 ```text
-GET https://codex-workshop-two.vercel.app/study/agentic-architecture
-status=307
-location=/auth/login
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SECRET_KEY
 ```
 
-Authenticated section-navigation verification completed on 2026-06-20 using `PROD_TEST_EMAIL` / `PROD_TEST_PASSWORD` from `C:\secrets\.env` without printing secret values:
+## Deploy DB
+
+Database migrations live in `supabase/migrations`.
+
+Important warning: remote Supabase migration history currently has older versions that do not match the local migration filenames:
 
 ```text
-login_status=303
-login_location=/dashboard
-dashboard_status=200
-dashboard_has_welcome=True
-study_en_status=200
-study_en_title_present=True
-study_en_has_sections_nav=True
-study_en_section_link_count=11
-study_en_missing_matching_ids=0
-study_en_has_language_toggle_to_zh=True
-study_zh_status=200
-study_zh_title_present=True
-study_zh_has_sections_nav=True
-study_zh_section_link_count=11
-study_zh_missing_matching_ids=0
-study_zh_has_language_toggle_to_en=True
+remote: 20260618081553, 20260618081641, 20260618121127
+local:  202606180001,   20260618074937, 20260618120842
 ```
 
-Remote migration verification completed on 2026-06-21:
+Because of that, do not blindly run `supabase db push --linked` until migration history is reconciled. The latest progress migration `202606210001 study_progress` was applied manually through the Supabase Management API and recorded in migration history.
+
+For future schema changes, safest options are:
+
+| Option | Use When | Notes |
+|---|---|---|
+| Supabase SQL Editor | One-off manual change | Also record exactly what was applied |
+| Supabase Management API database query endpoint | Agent-driven one-off change | Do not print secrets |
+| Reconcile migration history first, then CLI | Long-term preferred | Requires careful repair plan |
+
+## Verification Already Done
+
+Local after reading-progress slice:
+
+```text
+corepack pnpm test      -> 26 passed, 0 failed
+corepack pnpm lint      -> exit 0
+corepack pnpm typecheck -> exit 0
+corepack pnpm build     -> exit 0
+```
+
+Remote DB:
 
 ```text
 table_exists=True
@@ -204,7 +160,7 @@ rls_enabled=True
 policy_count=4
 ```
 
-Authenticated reading-progress verification completed on 2026-06-21 using `PROD_TEST_EMAIL` / `PROD_TEST_PASSWORD` from `C:\secrets\.env` without printing secret values:
+Production reading-progress smoke:
 
 ```text
 login_status=303
@@ -220,43 +176,16 @@ persisted_after_reload=True
 cleanup_restored=True
 ```
 
-Vercel deployment-list API verification was not available with the current token scope; it returned `forbidden`. Use route checks, Vercel dashboard, or a token with deployment-list permission when deployment IDs are required.
+## Next Agent Recommendation
 
-## Recent Commits
+Implement quiz practice MVP next. Suggested first slice:
 
-```text
-5c14a707 feat: add reading progress tracking
-6dff14d7 docs: plan reading progress tracking
-76078f29 docs: design reading progress tracking
-39b9d241 docs: record production section nav verification
-0319dc40 docs: refresh section navigation handoff
-4c553796 feat: add study section navigation
-0400a10f docs: design study section navigation
-aa70f809 docs: refresh CLI handoff
-9e5ecebf feat: add study reading pages
-```
+1. Add `questions`, `question_options`, `quiz_attempts`, and `quiz_answers` schema with RLS.
+2. Seed a small curated question set for one high-weight domain first.
+3. Build `/practice` domain/session selection.
+4. Build `/practice/[attemptId]` answer flow.
+5. Build result/review screen.
+6. Show practice stats on `/dashboard`.
+7. Update CI to run `pnpm test` and `pnpm build`, not only lint/typecheck.
 
-## Next Work
-
-Recommended next slices:
-
-| Priority | Work | Notes |
-|---|---|---|
-| 1 | Quiz practice | Requires question model, answer flow, scoring, and review behavior |
-| 2 | Dashboard progress summaries | Use `study_progress` to show domain-level progress on `/dashboard` |
-| 3 | Production admin UI verification | Verify approve/reject/deactivate/restore/premium actions through browser UI if not already covered manually |
-
-## Operational Notes
-
-Use Vercel CLI/API and Supabase CLI/API, not desktop plugins. Load tokens from `C:\secrets\.env` without printing values.
-
-Before any new code changes:
-
-| Description | Command | Expected Result |
-|---|---|---|
-| Confirm clean repo | `git status --short --branch` | `main...origin/main`, no changes |
-| Sync latest | `git pull --ff-only` | Already up to date or fast-forward |
-| Re-run checks after edits | `corepack pnpm test; corepack pnpm lint; corepack pnpm typecheck` | All pass |
-| Build before completion | placeholder Supabase env + `corepack pnpm build` | Next.js build exits 0 |
-
-Do not expose secret values in terminal output or documentation.
+Full details are in `docs/superpowers/HANDOFF.md`.
