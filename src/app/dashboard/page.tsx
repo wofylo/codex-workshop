@@ -14,7 +14,8 @@ import {
   getStudyDomains,
   getSuggestedDomain,
 } from "@/lib/study/dashboard";
-import { ArrowRight, BookOpenCheck, Crown, FileText, Gauge, ShieldCheck } from "lucide-react";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { ArrowRight, BookOpenCheck, Crown, FileText, Gauge, ShieldCheck, Trophy } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,19 @@ export default async function DashboardPage() {
   const summary = getDashboardSummary();
   const suggestedDomain = getSuggestedDomain();
   const isAdmin = profile.role === "admin";
+
+  const supabase = await createServerSupabaseClient();
+  const { data: recentAttempts } = await supabase
+    .from("quiz_attempts")
+    .select("id, score, completed_at, study_domains(title_en)")
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false })
+    .limit(3);
+
+  const { count: totalAttempts } = await supabase
+    .from("quiz_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "completed");
 
   return (
     <main className="min-h-svh bg-background text-foreground">
@@ -148,6 +162,47 @@ export default async function DashboardPage() {
           </div>
 
           <aside className="space-y-3">
+            {/* Practice stats */}
+            <Card className="rounded-lg bg-card/92">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Trophy className="size-4 text-primary" aria-hidden="true" />
+                  Practice
+                </CardTitle>
+                <CardDescription>
+                  {totalAttempts ? `${totalAttempts} session${totalAttempts === 1 ? "" : "s"} completed` : "No sessions yet"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {recentAttempts && recentAttempts.length > 0 ? (
+                  <div className="space-y-2">
+                    {recentAttempts.map((attempt) => {
+                      const domainTitle = Array.isArray(attempt.study_domains)
+                        ? attempt.study_domains[0]?.title_en
+                        : (attempt.study_domains as { title_en: string } | null)?.title_en ?? "Quiz";
+                      const scoreText = attempt.score !== null ? `${attempt.score} correct` : "—";
+                      return (
+                        <Link
+                          key={attempt.id}
+                          className="flex items-center justify-between gap-3 rounded-md border border-border bg-background/45 px-3 py-2 text-sm transition hover:bg-muted"
+                          href={`/practice/${attempt.id}/review`}
+                        >
+                          <span className="truncate text-muted-foreground">{domainTitle}</span>
+                          <span className="shrink-0 font-medium text-foreground">{scoreText}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Complete a practice session to track your progress.</p>
+                )}
+                <Link className={cn(buttonVariants({ variant: "default" }), "w-full")} href="/practice">
+                  <BookOpenCheck className="size-4" aria-hidden="true" />
+                  Start Practice
+                </Link>
+              </CardContent>
+            </Card>
+
             <Card className="rounded-lg border-primary/30 bg-card/92">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -163,26 +218,6 @@ export default async function DashboardPage() {
                 </p>
                 <div className="rounded-md border border-border bg-background/45 p-3 text-foreground">
                   Target: 720 / 1000
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-lg bg-card/92">
-              <CardHeader>
-                <CardTitle className="text-lg">What is next</CardTitle>
-                <CardDescription>Planned app slices after this dashboard.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <div className="flex gap-2">
-                  <ArrowRight className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                  <span>Admin user management for approvals and premium flags.</span>
-                </div>
-                <div className="flex gap-2">
-                  <ArrowRight className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                  <span>Study reading pages with rendered guide content.</span>
-                </div>
-                <div className="flex gap-2">
-                  <ArrowRight className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-                  <span>Progress tracking once the schema is ready.</span>
                 </div>
               </CardContent>
             </Card>

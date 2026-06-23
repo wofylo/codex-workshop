@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   checks:
-    name: Lint and typecheck
+    name: Test, lint, typecheck, build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,8 +31,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Test
+        run: pnpm test
+
       - name: Lint
         run: pnpm lint
 
       - name: Typecheck
         run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder
+          SUPABASE_SECRET_KEY: placeholder-secret

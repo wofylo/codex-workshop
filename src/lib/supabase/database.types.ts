@@ -386,6 +386,7 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
+          domain_id: string | null
           id: string
           language: string
           mode: Database["public"]["Enums"]["quiz_mode"]
@@ -399,6 +400,7 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
+          domain_id?: string | null
           id?: string
           language: string
           mode: Database["public"]["Enums"]["quiz_mode"]
@@ -412,6 +414,7 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
+          domain_id?: string | null
           id?: string
           language?: string
           mode?: Database["public"]["Enums"]["quiz_mode"]
@@ -423,6 +426,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "study_domains"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quiz_attempts_user_id_fkey"
             columns: ["user_id"]
