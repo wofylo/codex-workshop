@@ -96,11 +96,11 @@ export default async function AttemptPage({ params }: AttemptPageProps) {
                 <CardContent>
                   <fieldset>
                     <legend className="sr-only">Question {qIdx + 1} choices</legend>
-                    <div className="space-y-2">
+                    <div className="group space-y-2">
                       {displayChoices.map((choice, displayIdx) => (
                         <label
                           key={displayIdx}
-                          className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-4 py-3 text-sm leading-6 text-muted-foreground transition hover:border-primary/40 hover:bg-primary/5 hover:text-foreground has-[:checked]:border-primary/60 has-[:checked]:bg-primary/10 has-[:checked]:text-foreground"
+                          className="flex cursor-pointer items-start gap-3 rounded-md border border-border px-4 py-3 text-sm leading-6 text-muted-foreground transition group-has-[:checked]:opacity-60 hover:border-primary/40 hover:bg-primary/5 hover:text-foreground has-[:checked]:!opacity-100 has-[:checked]:border-primary has-[:checked]:bg-primary/15 has-[:checked]:text-foreground has-[:checked]:ring-1 has-[:checked]:ring-primary/50"
                         >
                           <input
                             className="sr-only"
