@@ -61,7 +61,7 @@ export async function startQuizAction(formData: FormData) {
   const attemptQuestions = questions.map((q, i) => ({
     attempt_id: attempt.id,
     question_id: q.id,
-    position: i,
+    position: i + 1,
     question_snapshot: {
       question_en: q.question_en,
       choices_en: q.choices_en as string[],
