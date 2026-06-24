@@ -39,6 +39,30 @@ export default async function DashboardPage() {
     .select("id", { count: "exact", head: true })
     .eq("status", "completed");
 
+  // Per-domain accuracy (excludes mock exam attempts which have domain_id = null)
+  const { data: domainAttempts } = await supabase
+    .from("quiz_attempts")
+    .select("domain_id, score, study_domains(title_en), quiz_attempt_questions(id)")
+    .eq("status", "completed")
+    .not("domain_id", "is", null);
+
+  type DomainStat = { title: string; correct: number; total: number };
+  const domainStatMap = new Map<string, DomainStat>();
+  for (const attempt of domainAttempts ?? []) {
+    if (!attempt.domain_id) continue;
+    const title = Array.isArray(attempt.study_domains)
+      ? attempt.study_domains[0]?.title_en
+      : (attempt.study_domains as { title_en: string } | null)?.title_en ?? "Unknown";
+    const questionCount = Array.isArray(attempt.quiz_attempt_questions)
+      ? attempt.quiz_attempt_questions.length
+      : 0;
+    const existing = domainStatMap.get(attempt.domain_id) ?? { title: title ?? "Unknown", correct: 0, total: 0 };
+    existing.correct += attempt.score ?? 0;
+    existing.total += questionCount;
+    domainStatMap.set(attempt.domain_id, existing);
+  }
+  const domainStats = [...domainStatMap.values()].sort((a, b) => a.title.localeCompare(b.title));
+
   return (
     <main className="min-h-svh bg-background text-foreground">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-8 sm:py-10">
@@ -196,6 +220,23 @@ export default async function DashboardPage() {
                 ) : (
                   <p className="text-sm text-muted-foreground">Complete a practice session to track your progress.</p>
                 )}
+                {domainStats.length > 0 ? (
+                  <div className="space-y-1.5 border-t border-border pt-3">
+                    <p className="text-xs font-medium text-muted-foreground">By domain</p>
+                    {domainStats.map((stat) => {
+                      const pct = stat.total === 0 ? 0 : Math.round((stat.correct / stat.total) * 100);
+                      return (
+                        <div key={stat.title} className="flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{stat.title}</span>
+                          <span className={cn(
+                            "shrink-0 font-mono text-xs font-semibold tabular-nums",
+                            pct >= 70 ? "text-green-400" : pct >= 50 ? "text-amber-400" : "text-red-400",
+                          )}>{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <Link className={cn(buttonVariants({ variant: "default" }), "w-full")} href="/practice">
                   <BookOpenCheck className="size-4" aria-hidden="true" />
                   Start Practice

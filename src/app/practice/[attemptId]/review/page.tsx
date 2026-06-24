@@ -22,7 +22,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
 
   const { data: attempt } = await supabase
     .from("quiz_attempts")
-    .select("id, status, score, user_id, completed_at, study_domains(title_en)")
+    .select("id, status, score, user_id, completed_at, mode, study_domains(title_en)")
     .eq("id", attemptId)
     .single();
 
@@ -49,9 +49,12 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
   const score = attempt.score ?? 0;
   const percentage = total === 0 ? 0 : Math.round((score / total) * 100);
 
-  const domainTitle = Array.isArray(attempt.study_domains)
-    ? attempt.study_domains[0]?.title_en
-    : (attempt.study_domains as { title_en: string } | null)?.title_en ?? "Practice Quiz";
+  const isMockExam = attempt.mode === "mock_exam";
+  const domainTitle = isMockExam
+    ? "Mock Exam"
+    : Array.isArray(attempt.study_domains)
+      ? attempt.study_domains[0]?.title_en
+      : (attempt.study_domains as { title_en: string } | null)?.title_en ?? "Practice Quiz";
 
   const completedAt = attempt.completed_at
     ? new Date(attempt.completed_at).toLocaleString("zh-TW", {

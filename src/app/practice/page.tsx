@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, BookOpenCheck, TriangleAlert } from "lucide-react";
+import { ArrowLeft, BookOpenCheck, ClipboardList, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,7 +42,7 @@ export default async function PracticePage({ searchParams }: PracticePageProps) 
           <div>
             <h1 className="text-2xl font-semibold">Practice Quiz</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Choose a domain to start a focused practice session.
+              Choose a domain for focused practice, or take a full mock exam.
             </p>
           </div>
         </header>
@@ -53,6 +53,40 @@ export default async function PracticePage({ searchParams }: PracticePageProps) 
             {errorMessage}
           </div>
         ) : null}
+
+        {/* Mock exam card */}
+        <Card className="rounded-lg border-primary/30 bg-primary/5">
+          <CardHeader className="flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="border-primary/40 bg-primary/10 text-primary" variant="outline">
+                  Mock Exam
+                </Badge>
+                <Badge variant="secondary">~40 questions · All domains</Badge>
+              </div>
+              <CardTitle className="mt-2 text-lg leading-6">Full CCA-F Simulation</CardTitle>
+              <CardDescription className="mt-1">
+                Proportional mix across all five domains. No hints — results after submission.
+              </CardDescription>
+            </div>
+            <form action={startQuizAction} className="shrink-0">
+              <input name="mode" type="hidden" value="mock_exam" />
+              <button
+                className={cn(buttonVariants({ variant: "default" }), "w-full sm:w-auto")}
+                type="submit"
+              >
+                <ClipboardList className="size-4" aria-hidden="true" />
+                Start Mock Exam
+              </button>
+            </form>
+          </CardHeader>
+        </Card>
+
+        <div className="relative flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">or practice by domain</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
 
         <div className="grid gap-3">
           {domains?.map((domain) => (

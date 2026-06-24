@@ -11,35 +11,95 @@ function getString(formData: FormData, key: string): string {
   return typeof value === "string" ? value : "";
 }
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const MOCK_EXAM_TOTAL = 40;
+
 export async function startQuizAction(formData: FormData) {
   const profile = await requireApprovedUser();
-  const domainId = getString(formData, "domain_id");
-
-  if (!domainId) {
-    redirect("/practice?error=missing-domain");
-  }
-
+  const rawMode = getString(formData, "mode");
+  const mode: "learning" | "mock_exam" = rawMode === "mock_exam" ? "mock_exam" : "learning";
   const supabase = await createServerSupabaseClient();
 
-  const { data: domain } = await supabase
-    .from("study_domains")
-    .select("id, slug, title_en")
-    .eq("id", domainId)
-    .single();
+  type QuestionRow = {
+    id: string;
+    question_en: string;
+    choices_en: unknown;
+    correct_choice_index: number;
+    explanation_en: string;
+    domain_id: string;
+  };
 
-  if (!domain) {
-    redirect("/practice?error=invalid-domain");
-  }
+  let questions: QuestionRow[];
+  let domainId: string | null = null;
 
-  const { data: questions } = await supabase
-    .from("questions")
-    .select("id, question_en, choices_en, correct_choice_index, explanation_en")
-    .eq("domain_id", domainId)
-    .eq("status", "active")
-    .limit(10);
+  if (mode === "mock_exam") {
+    const { data: allQ } = await supabase
+      .from("questions")
+      .select("id, question_en, choices_en, correct_choice_index, explanation_en, domain_id")
+      .eq("status", "active");
 
-  if (!questions || questions.length === 0) {
-    redirect("/practice?error=no-questions");
+    if (!allQ || allQ.length === 0) {
+      redirect("/practice?error=no-questions");
+    }
+
+    const { data: domains } = await supabase
+      .from("study_domains")
+      .select("id, exam_weight");
+
+    const weightMap = new Map((domains ?? []).map((d) => [d.id, d.exam_weight as number]));
+
+    const byDomain = new Map<string, QuestionRow[]>();
+    for (const q of allQ) {
+      const list = byDomain.get(q.domain_id) ?? [];
+      byDomain.set(q.domain_id, [...list, q as QuestionRow]);
+    }
+
+    const selected: QuestionRow[] = [];
+    for (const [did, domainQs] of byDomain) {
+      const weight = weightMap.get(did) ?? 0;
+      const count = Math.max(1, Math.round((weight / 100) * MOCK_EXAM_TOTAL));
+      selected.push(...shuffle(domainQs).slice(0, count));
+    }
+
+    questions = shuffle(selected);
+    domainId = null;
+  } else {
+    domainId = getString(formData, "domain_id");
+
+    if (!domainId) {
+      redirect("/practice?error=missing-domain");
+    }
+
+    const { data: domain } = await supabase
+      .from("study_domains")
+      .select("id")
+      .eq("id", domainId)
+      .single();
+
+    if (!domain) {
+      redirect("/practice?error=invalid-domain");
+    }
+
+    const { data: q } = await supabase
+      .from("questions")
+      .select("id, question_en, choices_en, correct_choice_index, explanation_en, domain_id")
+      .eq("domain_id", domainId)
+      .eq("status", "active")
+      .limit(10);
+
+    if (!q || q.length === 0) {
+      redirect("/practice?error=no-questions");
+    }
+
+    questions = q as QuestionRow[];
   }
 
   const { data: attempt, error: attemptError } = await supabase
@@ -48,7 +108,7 @@ export async function startQuizAction(formData: FormData) {
       user_id: profile.id,
       domain_id: domainId,
       language: "en",
-      mode: "learning",
+      mode,
       status: "in_progress",
     })
     .select("id")

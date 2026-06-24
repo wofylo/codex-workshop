@@ -23,7 +23,7 @@ export default async function AttemptPage({ params }: AttemptPageProps) {
 
   const { data: attempt } = await supabase
     .from("quiz_attempts")
-    .select("id, status, user_id, study_domains(title_en)")
+    .select("id, status, user_id, mode, study_domains(title_en)")
     .eq("id", attemptId)
     .single();
 
@@ -45,9 +45,12 @@ export default async function AttemptPage({ params }: AttemptPageProps) {
     redirect("/practice");
   }
 
-  const domainTitle = Array.isArray(attempt.study_domains)
-    ? attempt.study_domains[0]?.title_en
-    : (attempt.study_domains as { title_en: string } | null)?.title_en ?? "Practice Quiz";
+  const isMockExam = attempt.mode === "mock_exam";
+  const domainTitle = isMockExam
+    ? "Mock Exam"
+    : Array.isArray(attempt.study_domains)
+      ? attempt.study_domains[0]?.title_en
+      : (attempt.study_domains as { title_en: string } | null)?.title_en ?? "Practice Quiz";
 
   return (
     <main className="min-h-svh bg-background text-foreground">
@@ -60,7 +63,7 @@ export default async function AttemptPage({ params }: AttemptPageProps) {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge className="border-primary/40 bg-primary/10 text-primary" variant="outline">
-                In Progress
+                {isMockExam ? "Mock Exam" : "In Progress"}
               </Badge>
             </div>
             <h1 className="mt-2 text-xl font-semibold leading-6">{domainTitle}</h1>
