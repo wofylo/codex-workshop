@@ -108,3 +108,8 @@ create policy "Admins read all bug report files" on public.bug_report_files
         and not is_deleted
     )
   );
+
+-- Auto-update updated_at on row edits
+create trigger bug_reports_set_updated_at
+  before update on public.bug_reports
+  for each row execute function private.set_updated_at();
