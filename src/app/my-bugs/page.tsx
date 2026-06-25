@@ -41,7 +41,7 @@ export default async function MyBugsPage() {
   const { data: reports } = await supabase
     .from("bug_reports")
     .select(
-      "id, title, category, status, admin_note, created_at, bug_report_files(id, file_name, storage_path)",
+      "id, title, description, category, status, admin_note, created_at, bug_report_files(id, file_name, storage_path)",
     )
     .eq("user_id", profile.id)
     .order("created_at", { ascending: false });
@@ -129,6 +129,11 @@ export default async function MyBugsPage() {
                       {createdAt}
                     </CardDescription>
                   </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      {report.description}
+                    </p>
+                  </CardContent>
                   {(report.admin_note || report.files.length > 0) && (
                     <CardContent className="space-y-3">
                       {report.admin_note && (

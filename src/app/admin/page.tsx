@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { updateProfileAction } from "@/app/admin/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -27,9 +28,15 @@ export default async function AdminPage() {
     <main className="min-h-svh bg-background text-foreground">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-8 sm:py-10">
         <header className="flex flex-col gap-4 border-b border-border pb-7">
-          <Badge className="w-fit border-primary/40 bg-primary/10 text-primary" variant="outline">
-            Admin console
-          </Badge>
+          <div className="flex items-center gap-3">
+            <Link className={cn(buttonVariants({ variant: "outline" }), "h-8 w-fit")} href="/dashboard">
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              Dashboard
+            </Link>
+            <Badge className="w-fit border-primary/40 bg-primary/10 text-primary" variant="outline">
+              Admin console
+            </Badge>
+          </div>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h1 className="text-3xl font-semibold tracking-normal sm:text-4xl">
