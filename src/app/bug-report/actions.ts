@@ -68,14 +68,21 @@ export async function createBugReportAction(
         .from("bug-attachments")
         .upload(path, buffer, { contentType: file.type });
 
-      if (!uploadError) {
-        await supabase.from("bug_report_files").insert({
-          report_id: report.id,
-          storage_path: path,
-          file_name: file.name,
-          file_size: file.size,
-          mime_type: file.type || null,
-        });
+      if (uploadError) {
+        console.error("[bug-report] storage upload failed", { path, error: uploadError.message });
+        continue;
+      }
+
+      const { error: insertError } = await supabase.from("bug_report_files").insert({
+        report_id: report.id,
+        storage_path: path,
+        file_name: file.name,
+        file_size: file.size,
+        mime_type: file.type || null,
+      });
+
+      if (insertError) {
+        console.error("[bug-report] bug_report_files insert failed — orphaned storage object", { path, error: insertError.message });
       }
     }
   }
