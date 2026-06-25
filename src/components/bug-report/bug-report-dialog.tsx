@@ -14,12 +14,10 @@ export function BugReportDialog({ onClose }: { onClose: () => void }) {
   const [fileError, setFileError] = useState<string | null>(null);
   const [dialogState, setDialogState] = useState<DialogState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [pageUrl, setPageUrl] = useState("");
+  const [pageUrl] = useState(() =>
+    typeof window !== "undefined" ? window.location.href : ""
+  );
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setPageUrl(window.location.href);
-  }, []);
 
   // Close on Escape key
   useEffect(() => {
