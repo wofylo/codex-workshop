@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { AlertCircle, CheckCircle2, Loader2, Paperclip, X } from "lucide-react";
 import Link from "next/link";
 import { createBugReportAction } from "@/app/bug-report/actions";
@@ -32,15 +32,15 @@ export function BugReportDialog({ onClose }: { onClose: () => void }) {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const incoming = Array.from(e.target.files ?? []);
-    const merged = [...files, ...incoming].slice(0, MAX_FILES);
 
-    const oversized = merged.find((f) => f.size > MAX_FILE_SIZE);
+    const oversized = incoming.find((f) => f.size > MAX_FILE_SIZE);
     if (oversized) {
       setFileError(`"${oversized.name}" exceeds the 5 MB limit`);
       e.target.value = "";
       return;
     }
 
+    const merged = [...files, ...incoming].slice(0, MAX_FILES);
     setFileError(null);
     setFiles(merged);
     e.target.value = "";
@@ -186,7 +186,7 @@ export function BugReportDialog({ onClose }: { onClose: () => void }) {
               {files.length > 0 && (
                 <ul className="space-y-1">
                   {files.map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <li key={`${f.name}-${f.size}`} className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span className="min-w-0 flex-1 truncate">{f.name}</span>
                       <span className="shrink-0">({(f.size / 1024).toFixed(0)} KB)</span>
                       <button
