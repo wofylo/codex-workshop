@@ -2,7 +2,7 @@
 
 This document is the complete handoff for Claude Code, Codex CLI, or another coding agent taking over the CCA-F exam prep app. It intentionally avoids relying on desktop plugins. Use local commands, Git, Vercel CLI/API, Supabase CLI/API, and direct HTTP checks.
 
-The project has a working foundation, but it is still product-light. The next agent should prioritize quiz practice and scoring instead of spending more time on static reading-page polish.
+The quiz practice MVP is shipped. The app supports domain quizzes, mock exam mode, scoring, review, and per-domain accuracy tracking. The next agent should prioritize CI hardening and resume-attempt support rather than rebuilding what already exists.
 
 ## 1. Current Snapshot
 
@@ -25,16 +25,18 @@ This section identifies the live project, repository, hosting, and database reso
 
 ### Current Reality
 
-The app currently supports login, approval-gated dashboard access, basic admin user management, static CCA-F guide reading, section navigation, and section-level read/unread progress. That is not enough for a useful exam prep product. The user explicitly complained that progress has been slow and not much useful functionality exists.
+The app supports login, approval-gated dashboard access, basic admin user management, static CCA-F guide reading, section navigation, section-level read/unread progress, domain quiz practice, mock exam mode, attempt scoring and review, and per-domain accuracy stats on the dashboard. The quiz MVP is shipped and in production.
 
-The next high-value feature is quiz practice:
+Current question bank: 150 questions total, 30 per domain, across all 5 CCA-F domains.
+
+Remaining high-value work:
 
 | Priority | Work | Reason |
 |---|---|---|
-| 1 | Quiz practice MVP | Core exam-prep value is missing |
-| 2 | Attempt scoring and review | Users need measurable practice and feedback |
-| 3 | Dashboard progress summaries | Dashboard should show learning/practice state, not only static domain cards |
-| 4 | CI hardening | Current CI does not run tests or production build |
+| 1 | CI hardening | CI does not run tests or production build — regressions can reach Vercel |
+| 2 | Resume unfinished attempt | Users who navigate away mid-quiz lose progress |
+| 3 | Admin question management UI | Adding/editing questions currently requires direct SQL seeding |
+| 4 | Score trend / history view | Dashboard shows only recent attempts, not progress over time |
 | 5 | Admin production UI verification | Existing admin actions need browser-level confidence |
 
 ## 2. Communication And Secret Rules
@@ -100,6 +102,12 @@ This section describes the intended product direction. The current codebase is a
 | Approved learner | Read English and Traditional Chinese study guides | Implemented |
 | Approved learner | Jump between sections in a guide | Implemented |
 | Approved learner | Mark sections read/unread | Implemented |
+| Approved learner | Start a practice quiz by domain | Implemented |
+| Approved learner | Answer multiple-choice questions | Implemented |
+| Approved learner | Submit a quiz and receive score | Implemented |
+| Approved learner | Review correct answer and explanation | Implemented |
+| Approved learner | Start a full 40-question mock exam (all domains proportional) | Implemented |
+| Approved learner | See per-domain accuracy and recent attempts on dashboard | Implemented |
 | Admin | Approve/reject/deactivate/restore users | Implemented basic UI |
 | Admin | Toggle premium flag | Implemented basic UI |
 
@@ -109,15 +117,11 @@ These are the highest priority remaining product requirements.
 
 | User | Requirement | Suggested Priority |
 |---|---|---|
-| Approved learner | Start a practice quiz by domain | P0 |
-| Approved learner | Answer multiple-choice questions | P0 |
-| Approved learner | Submit a quiz and receive score | P0 |
-| Approved learner | Review correct answer and explanation | P0 |
-| Approved learner | See weak domains and recent attempts | P1 |
 | Approved learner | Resume an unfinished attempt | P1 |
-| Admin | Manage question bank | P1/P2, after learner MVP |
-| Admin | Import question bank from structured files | P1/P2 |
-| Admin | See aggregate progress | P2 |
+| Approved learner | View score trend over time | P1 |
+| Admin | Manage question bank via UI | P1/P2 |
+| Admin | Import question bank from structured files | P2 |
+| Admin | See aggregate progress across all users | P2 |
 
 ### Recommended Quiz MVP
 
@@ -214,6 +218,9 @@ Supabase is the source of truth for auth, profile state, admin audit events, and
 | `supabase/migrations/20260618074937_auth_rls_policies.sql` | Auth/profile RLS policies |
 | `supabase/migrations/20260618120842_optimize_rls_and_indexes.sql` | RLS/index optimization |
 | `supabase/migrations/202606210001_study_progress.sql` | Section-level reading progress |
+| `supabase/migrations/202606230001_quiz_attempts_domain.sql` | Adds `domain_id` FK column to `quiz_attempts` |
+
+The core quiz tables (`study_domains`, `quiz_questions`, `quiz_attempts`, `quiz_attempt_questions`, `quiz_attempt_answers`) were applied directly via Supabase Management API SQL, not as a local migration file. There is no local `.sql` file covering that schema.
 
 ### Remote Migration History Warning
 
@@ -246,26 +253,20 @@ until migration history has been reconciled. Doing so may fail or tempt unsafe r
 | `public.profiles` | App-level user profile, role, approval, premium, soft delete |
 | `public.admin_audit_events` | Admin mutation audit trail |
 | `public.study_progress` | Per-user/domain/language/section read state |
+| `public.study_domains` | Domain metadata: slug, title_en, exam_weight, mock_question_count, sort_order |
+| `public.quiz_questions` | Question bank: question_en, choices_en (jsonb), correct_choice_index, explanation_en, domain_id, is_active |
+| `public.quiz_attempts` | Attempt header: user_id, domain_id (nullable), mode (`learning\|mock_exam`), status (`in_progress\|completed`), score, started_at, completed_at |
+| `public.quiz_attempt_questions` | Per-attempt question snapshot: attempt_id, position, question_snapshot (jsonb), correct_choice_index_snapshot, choice_order (jsonb), domain_id (nullable for mock exam) |
+| `public.quiz_attempt_answers` | Per-question answer: attempt_id, attempt_question_id, selected_choice_index, is_correct |
 
-### Future Quiz Tables Recommendation
+#### Quiz Schema Notes
 
-For quiz MVP, add tables similar to:
-
-| Table | Purpose |
-|---|---|
-| `public.questions` | Question prompt, domain, difficulty, explanation, active flag |
-| `public.question_options` | Multiple-choice options per question |
-| `public.quiz_attempts` | User attempt header, domain, status, score, started/submitted timestamps |
-| `public.quiz_answers` | Per-question user answer and correctness |
-
-Use RLS:
-
-| Table | RLS Rule |
-|---|---|
-| `questions` | Approved authenticated users can read active questions; admin can manage later |
-| `question_options` | Approved authenticated users can read options for active questions |
-| `quiz_attempts` | Users can read/write own attempts only |
-| `quiz_answers` | Users can read/write answers for own attempts only |
+- `quiz_attempts.domain_id` is nullable. `null` means mock exam (spans all domains).
+- `quiz_attempt_questions.domain_id` is nullable for the same reason.
+- `quiz_attempts.mode` is an enum: `learning` or `mock_exam`.
+- `quiz_attempt_questions.position` is 1-based (enforced by a `position_positive` check constraint).
+- Question count: 150 total, 30 per domain (as of 2026-06-23).
+- RLS: users can only read/write their own attempts and answers. `quiz_questions` and `study_domains` are readable by all approved authenticated users.
 
 ## 6. CI/CD
 
@@ -601,6 +602,45 @@ Implemented:
 | Desktop/mobile section navigation | Done |
 | Supabase-backed section read/unread state | Done |
 
+### Quiz Practice
+
+Protected pages live at:
+
+```text
+/practice
+/practice/[attemptId]
+/practice/[attemptId]/review
+```
+
+Server actions live in `src/app/practice/actions.ts`.
+
+| Feature | Status |
+|---|---|
+| Domain list with per-domain question count and exam weight | Done |
+| Mock Exam card (40 questions, proportional across all domains) | Done |
+| `startQuizAction` — learning mode selects up to 10 random questions from domain | Done |
+| `startQuizAction` — mock exam mode samples proportionally by `exam_weight`, shuffles final list | Done |
+| Attempt page with radio-select answer choices | Done |
+| CSS-only selected-state highlight (dim unselected, ring + bg on selected) | Done |
+| `submitAttemptAction` — server-side scoring, marks attempt completed | Done |
+| Review page — per-question correct/wrong indicators with explanations | Done |
+| Mock Exam badge and "Mock Exam" title in attempt/review pages | Done |
+| Dashboard: recent attempts list with domain title and score | Done |
+| Dashboard: per-domain accuracy stats (excludes mock exam attempts) | Done |
+| Color-coded accuracy: ≥70% green, ≥50% amber, <50% red | Done |
+
+Quiz helpers live in `src/lib/quiz/helpers.ts`. `QuizQuestionSnapshot` type is defined there and used by both the attempt and review pages.
+
+Domain IDs (needed for direct SQL operations):
+
+| Domain | ID |
+|---|---|
+| Agentic Architecture | `683d6957-d32d-41aa-bbfb-c4535ac53811` |
+| Claude Code Configuration | `89bd6f2a-eaef-4308-a679-f8ebfc8ef208` |
+| Tool Design / MCP Integration | `d76ceea7-16ac-4b5e-95ea-8ce428648b96` |
+| Prompt Engineering | `c98b94b1-f00d-4efd-9686-c2b982b881cb` |
+| Context Management | `fe747838-9f03-498b-9caf-c104e20349ea` |
+
 ## 11. Verification History
 
 ### Overview
@@ -617,6 +657,15 @@ After the reading-progress slice:
 | Run lint | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm lint` | exit 0 |
 | Run typecheck | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm typecheck` | exit 0 |
 | Run build | placeholder Supabase env + `corepack pnpm build` | exit 0 |
+
+After the quiz MVP + mock exam + per-domain accuracy slice (commit `3deaa2a0`):
+
+| Description | Command | Result |
+|---|---|---|
+| Run lint | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm lint` | exit 0 |
+| Run typecheck | `$env:COREPACK_HOME = 'D:\Lab\codex-workshop\.corepack'; corepack pnpm typecheck` | exit 0 |
+
+Tests were not re-run after the quiz slice. The test count is expected to remain at 26 (quiz logic uses Supabase integration, not unit-testable helpers). Re-run before relying on CI.
 
 ### Production Auth Verification
 
@@ -745,83 +794,58 @@ Expected for approved non-admin users. Set the intended profile `role = 'admin'`
 
 ### Overview
 
-The next implementation should deliver user-visible exam practice. Keep the slice small and vertical: DB schema, a few questions, start quiz, answer, submit, review. Avoid building a broad CMS before learners can practice.
+Quiz practice is shipped. The next work should address reliability, then add the highest learner-value missing features. CI hardening is the most urgent because regressions currently reach Vercel undetected.
 
-### Suggested Slice: Quiz Practice MVP
+### Priority 1: Harden CI
 
-| Step | Work | Files Likely Touched |
-|---|---|---|
-| 1 | Create quiz schema migration | `supabase/migrations/*_quiz_practice.sql` |
-| 2 | Update DB types | `src/lib/supabase/database.types.ts` |
-| 3 | Add quiz domain helpers/tests | `src/lib/quiz/*` |
-| 4 | Add practice start route | `src/app/practice/page.tsx` |
-| 5 | Add attempt route/actions | `src/app/practice/[attemptId]/page.tsx`, `actions.ts` |
-| 6 | Add result/review route | `src/app/practice/[attemptId]/review/page.tsx` |
-| 7 | Add dashboard summary | `src/app/dashboard/page.tsx`, helper tests |
-| 8 | Harden CI | `.github/workflows/ci.yml` |
+File: `.github/workflows/ci.yml`
 
-### Suggested Schema Shape
+Add `pnpm test` and `pnpm build` to the existing lint+typecheck job:
 
-Use this as a starting point, not final SQL:
-
-```sql
-create table public.questions (
-  id uuid primary key default gen_random_uuid(),
-  domain_slug text not null,
-  prompt text not null,
-  explanation text not null,
-  difficulty text not null default 'medium',
-  is_active boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table public.question_options (
-  id uuid primary key default gen_random_uuid(),
-  question_id uuid not null references public.questions(id) on delete cascade,
-  option_label text not null,
-  option_text text not null,
-  is_correct boolean not null default false,
-  created_at timestamptz not null default now()
-);
-
-create table public.quiz_attempts (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles(id) on delete cascade,
-  domain_slug text not null,
-  status text not null default 'in_progress',
-  score integer,
-  total_questions integer not null default 0,
-  started_at timestamptz not null default now(),
-  submitted_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table public.quiz_answers (
-  id uuid primary key default gen_random_uuid(),
-  attempt_id uuid not null references public.quiz_attempts(id) on delete cascade,
-  question_id uuid not null references public.questions(id),
-  selected_option_id uuid references public.question_options(id),
-  is_correct boolean,
-  answered_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (attempt_id, question_id)
-);
+```yaml
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder
+  SUPABASE_SECRET_KEY: placeholder-secret
+steps:
+  # ... existing checkout / setup ...
+  - run: corepack pnpm test
+  - run: corepack pnpm lint
+  - run: corepack pnpm typecheck
+  - run: corepack pnpm build
 ```
 
-### Acceptance Criteria
+### Priority 2: Resume Unfinished Attempt
+
+Currently, navigating away from `/practice/[attemptId]` leaves an `in_progress` attempt with no way to return to it. The user must start a new quiz, leaving orphan attempts in the DB.
+
+| Step | Work | Files Touched |
+|---|---|---|
+| 1 | Add "resume" link on `/practice` if user has an `in_progress` attempt | `src/app/practice/page.tsx` |
+| 2 | Persist per-question answers as the user selects (AJAX or intermediate saves) | `src/app/practice/[attemptId]/page.tsx`, `actions.ts` |
+| 3 | On page load, restore selected answers from `quiz_attempt_answers` | `src/app/practice/[attemptId]/page.tsx` |
+
+Partial-save approach: simplest path is to render the attempt page with any existing `quiz_attempt_answers` pre-filled, and add an auto-save server action on each radio change (debounced fetch or form auto-submit per question). Full submission still goes through the existing `submitAttemptAction`.
+
+### Priority 3: Admin Question Management
+
+Currently, adding questions requires direct SQL via the Supabase Management API. Build a minimal admin UI.
+
+| Step | Work | Files Touched |
+|---|---|---|
+| 1 | Add question list page | `src/app/admin/questions/page.tsx` |
+| 2 | Add create/edit form and server action | `src/app/admin/questions/actions.ts` |
+| 3 | Add deactivate/reactivate toggle | same action file |
+
+No import-from-file needed in this slice. Direct form entry is enough for small-batch additions.
+
+### Acceptance Criteria For Next Slice (CI)
 
 | Requirement | Verification |
 |---|---|
-| Approved user can start quiz | Production/local authenticated route returns 200 |
-| User can answer and submit | Attempt status changes to submitted |
-| Score is correct | Unit tests cover scoring helper |
-| User can review explanations | Review page includes prompt, selected answer, correct answer, explanation |
-| Users cannot see others' attempts | RLS test or SQL/manual check |
-| Dashboard shows attempt summary | Dashboard page includes recent attempt data |
-| CI runs full checks | GitHub Actions includes test/lint/typecheck/build |
+| CI runs tests | GitHub Actions includes `pnpm test`, exits 0 |
+| CI runs build | GitHub Actions includes `pnpm build` with placeholder env, exits 0 |
+| Push to main triggers full check | Observe Actions run on next push |
 
 ## 14. Final Notes
 
