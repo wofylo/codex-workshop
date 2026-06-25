@@ -12,6 +12,7 @@ const serverEnvSchema = z.object({
   EMAIL_PROVIDER: z.string().min(1).optional(),
   EMAIL_API_KEY: z.string().min(1).optional(),
   EMAIL_FROM: z.string().email().optional(),
+  BUG_API_KEY: z.string().min(1).optional(),
 });
 
 export const serverEnv = serverEnvSchema.parse({
@@ -26,4 +27,5 @@ export const serverEnv = serverEnvSchema.parse({
   EMAIL_PROVIDER: process.env.EMAIL_PROVIDER || undefined,
   EMAIL_API_KEY: process.env.EMAIL_API_KEY || undefined,
   EMAIL_FROM: process.env.EMAIL_FROM || undefined,
+  BUG_API_KEY: process.env.BUG_API_KEY || undefined,
 });
