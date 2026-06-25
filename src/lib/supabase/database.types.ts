@@ -630,6 +630,91 @@ export type Database = {
           },
         ]
       }
+      bug_report_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number
+          id: string
+          mime_type: string | null
+          report_id: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size: number
+          id?: string
+          mime_type?: string | null
+          report_id: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          id?: string
+          mime_type?: string | null
+          report_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bug_report_files_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "bug_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bug_reports: {
+        Row: {
+          admin_note: string | null
+          category: Database["public"]["Enums"]["bug_category"]
+          created_at: string
+          description: string
+          id: string
+          page_url: string | null
+          status: Database["public"]["Enums"]["bug_status"]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          category?: Database["public"]["Enums"]["bug_category"]
+          created_at?: string
+          description: string
+          id?: string
+          page_url?: string | null
+          status?: Database["public"]["Enums"]["bug_status"]
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          category?: Database["public"]["Enums"]["bug_category"]
+          created_at?: string
+          description?: string
+          id?: string
+          page_url?: string | null
+          status?: Database["public"]["Enums"]["bug_status"]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bug_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -641,6 +726,8 @@ export type Database = {
       ai_feature: "question_generation" | "tutor" | "translation"
       app_role: "student" | "admin"
       approval_status: "pending" | "approved" | "rejected"
+      bug_category: "bug" | "feature" | "other"
+      bug_status: "open" | "in_progress" | "resolved" | "closed"
       question_status: "draft" | "pending_review" | "active" | "disabled"
       quiz_attempt_status: "in_progress" | "completed" | "abandoned" | "expired"
       quiz_mode: "learning" | "mock_exam"
@@ -774,6 +861,8 @@ export const Constants = {
       ai_feature: ["question_generation", "tutor", "translation"],
       app_role: ["student", "admin"],
       approval_status: ["pending", "approved", "rejected"],
+      bug_category: ["bug", "feature", "other"],
+      bug_status: ["open", "in_progress", "resolved", "closed"],
       question_status: ["draft", "pending_review", "active", "disabled"],
       quiz_attempt_status: ["in_progress", "completed", "abandoned", "expired"],
       quiz_mode: ["learning", "mock_exam"],
