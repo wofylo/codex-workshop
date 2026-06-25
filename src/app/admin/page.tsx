@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { updateProfileAction } from "@/app/admin/actions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -14,6 +15,7 @@ import {
   type AdminProfileListItem,
 } from "@/lib/admin/profiles";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { cn } from "@/lib/utils";
 import { Check, Crown, RotateCcw, Trash2, X } from "lucide-react";
 
 export default async function AdminPage() {
@@ -38,8 +40,13 @@ export default async function AdminPage() {
                 soft-delete users, restore users, and toggle premium access.
               </p>
             </div>
-            <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
-              Last active admin is protected by the database trigger.
+            <div className="flex flex-wrap items-center gap-3">
+              <Link className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto")} href="/admin/bugs">
+                Bug Reports
+              </Link>
+              <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+                Last active admin is protected by the database trigger.
+              </div>
             </div>
           </div>
         </header>
