@@ -5,12 +5,16 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireApprovedUser } from "@/lib/auth/guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { startQuizAction } from "@/app/practice/actions";
+import { startQuizAction, abandonAttemptAction } from "@/app/practice/actions";
 import { cn } from "@/lib/utils";
 
 type PracticePageProps = {
   searchParams?: Promise<{ error?: string }>;
 };
+
+function sevenDaysAgoISO(): string {
+  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+}
 
 const ERROR_MESSAGES: Record<string, string> = {
   "no-questions": "This domain has no active questions yet. Try another domain.",
@@ -25,6 +29,16 @@ export default async function PracticePage({ searchParams }: PracticePageProps) 
   const errorMessage = params?.error ? (ERROR_MESSAGES[params.error] ?? "Something went wrong.") : null;
 
   const supabase = await createServerSupabaseClient();
+
+  const sevenDaysAgo = sevenDaysAgoISO();
+  const { data: resumeAttempt } = await supabase
+    .from("quiz_attempts")
+    .select("id, mode, started_at, domain_id, study_domains(title_en)")
+    .eq("status", "in_progress")
+    .gte("started_at", sevenDaysAgo)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   const { data: domains } = await supabase
     .from("study_domains")
@@ -52,6 +66,60 @@ export default async function PracticePage({ searchParams }: PracticePageProps) 
             <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
             {errorMessage}
           </div>
+        ) : null}
+
+        {resumeAttempt ? (
+          <Card className="rounded-lg border-amber-500/30 bg-amber-500/5">
+            <CardHeader className="flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge
+                    className="border-amber-500/40 bg-amber-500/10 text-amber-200"
+                    variant="outline"
+                  >
+                    In Progress
+                  </Badge>
+                  <Badge variant="secondary">
+                    {resumeAttempt.mode === "mock_exam"
+                      ? "Mock Exam"
+                      : (
+                          Array.isArray(resumeAttempt.study_domains)
+                            ? resumeAttempt.study_domains[0]?.title_en
+                            : (resumeAttempt.study_domains as { title_en: string } | null)
+                                ?.title_en
+                        ) ?? "Practice Quiz"}
+                  </Badge>
+                </div>
+                <CardTitle className="mt-2 text-base leading-6">Unfinished attempt</CardTitle>
+                <CardDescription className="mt-1 text-xs">
+                  Started{" "}
+                  {new Date(resumeAttempt.started_at).toLocaleDateString("zh-TW", {
+                    timeZone: "Asia/Taipei",
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                  })}
+                </CardDescription>
+              </div>
+              <div className="flex flex-col items-start gap-2 sm:items-end">
+                <Link
+                  className={cn(buttonVariants({ variant: "default" }), "w-full sm:w-auto")}
+                  href={`/practice/${resumeAttempt.id}`}
+                >
+                  Resume Quiz
+                </Link>
+                <form action={abandonAttemptAction}>
+                  <input name="attempt_id" type="hidden" value={resumeAttempt.id} />
+                  <button
+                    className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                    type="submit"
+                  >
+                    Abandon
+                  </button>
+                </form>
+              </div>
+            </CardHeader>
+          </Card>
         ) : null}
 
         {/* Mock exam card */}
