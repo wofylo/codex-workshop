@@ -6,7 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireApprovedUser } from "@/lib/auth/guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { submitAttemptAction } from "@/app/practice/actions";
+import { AttemptForm } from "@/components/quiz/attempt-form";
 import { choiceLabel } from "@/lib/quiz/helpers";
 import type { QuizQuestionSnapshot } from "@/lib/quiz/helpers";
 import { cn } from "@/lib/utils";
@@ -37,12 +37,35 @@ export default async function AttemptPage({ params }: AttemptPageProps) {
 
   const { data: attemptQuestions } = await supabase
     .from("quiz_attempt_questions")
-    .select("id, position, question_snapshot, correct_choice_index_snapshot, choice_order")
+    .select("id, position, question_snapshot, correct_choice_index_snapshot, choice_order, question_id")
     .eq("attempt_id", attemptId)
     .order("position");
 
   if (!attemptQuestions || attemptQuestions.length === 0) {
     redirect("/practice");
+  }
+
+  // Fetch existing saved answers to pre-fill the form
+  const { data: existingAnswers } = await supabase
+    .from("quiz_attempt_answers")
+    .select("attempt_question_id, selected_choice_index")
+    .eq("attempt_id", attemptId);
+
+  // Map attemptQuestionId → origIdx (selected_choice_index stored in DB)
+  const answerMap = new Map<string, number>(
+    (existingAnswers ?? [])
+      .filter((a): a is typeof a & { selected_choice_index: number } =>
+        a.selected_choice_index !== null,
+      )
+      .map((a) => [a.attempt_question_id, a.selected_choice_index]),
+  );
+
+  // Build maps for AttemptForm props
+  const questionChoiceOrders: Record<string, number[]> = {};
+  const questionIds: Record<string, string> = {};
+  for (const aq of attemptQuestions) {
+    questionChoiceOrders[aq.id] = aq.choice_order as number[];
+    questionIds[aq.id] = aq.question_id;
   }
 
   const isMockExam = attempt.mode === "mock_exam";
@@ -73,9 +96,11 @@ export default async function AttemptPage({ params }: AttemptPageProps) {
           </div>
         </header>
 
-        <form action={submitAttemptAction} className="space-y-5">
-          <input name="attempt_id" type="hidden" value={attemptId} />
-
+        <AttemptForm
+          attemptId={attemptId}
+          questionChoiceOrders={questionChoiceOrders}
+          questionIds={questionIds}
+        >
           {attemptQuestions.map((aq, qIdx) => {
             const snapshot = aq.question_snapshot as QuizQuestionSnapshot;
             const choiceOrder = aq.choice_order as number[];
@@ -83,6 +108,7 @@ export default async function AttemptPage({ params }: AttemptPageProps) {
               origIdx,
               text: snapshot.choices_en[origIdx] ?? "",
             }));
+            const existingOrigIdx = answerMap.get(aq.id);
 
             return (
               <Card key={aq.id} className="rounded-lg bg-card/92">
@@ -107,8 +133,10 @@ export default async function AttemptPage({ params }: AttemptPageProps) {
                         >
                           <input
                             className="sr-only"
+                            defaultChecked={
+                              existingOrigIdx !== undefined && existingOrigIdx === choice.origIdx
+                            }
                             name={`q_${aq.id}`}
-                            required
                             type="radio"
                             value={displayIdx}
                           />
@@ -126,11 +154,14 @@ export default async function AttemptPage({ params }: AttemptPageProps) {
           })}
 
           <div className="flex justify-end pt-2">
-            <button className={cn(buttonVariants({ variant: "default" }), "w-full sm:w-auto")} type="submit">
+            <button
+              className={cn(buttonVariants({ variant: "default" }), "w-full sm:w-auto")}
+              type="submit"
+            >
               Submit Quiz
             </button>
           </div>
-        </form>
+        </AttemptForm>
       </section>
     </main>
   );
