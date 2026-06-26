@@ -214,3 +214,77 @@ export async function submitAttemptAction(formData: FormData) {
 
   redirect(`/practice/${attemptId}/review`);
 }
+
+export async function saveAnswerAction(formData: FormData): Promise<void> {
+  const profile = await requireApprovedUser();
+  const attemptId = getString(formData, "attempt_id");
+  const attemptQuestionId = getString(formData, "attempt_question_id");
+  const questionId = getString(formData, "question_id");
+  const answerRaw = getString(formData, "answer");
+  const choiceOrderRaw = getString(formData, "choice_order");
+
+  if (!attemptId || !attemptQuestionId || !questionId || !answerRaw || !choiceOrderRaw) return;
+
+  const displayIdx = parseInt(answerRaw, 10);
+  if (isNaN(displayIdx) || displayIdx < 0 || displayIdx > 3) return;
+
+  let choiceOrder: number[];
+  try {
+    choiceOrder = JSON.parse(choiceOrderRaw) as number[];
+  } catch {
+    return;
+  }
+
+  const origIdx = choiceOrder[displayIdx];
+  if (origIdx === undefined) return;
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data: attempt } = await supabase
+    .from("quiz_attempts")
+    .select("id, user_id, status")
+    .eq("id", attemptId)
+    .single();
+
+  if (!attempt || attempt.user_id !== profile.id || attempt.status !== "in_progress") return;
+
+  await supabase.from("quiz_attempt_answers").upsert(
+    {
+      attempt_id: attemptId,
+      attempt_question_id: attemptQuestionId,
+      question_id: questionId,
+      selected_choice_index: origIdx,
+      is_correct: null,
+      answered_at: new Date().toISOString(),
+    },
+    { onConflict: "attempt_question_id" },
+  );
+}
+
+export async function abandonAttemptAction(formData: FormData): Promise<void> {
+  const profile = await requireApprovedUser();
+  const attemptId = getString(formData, "attempt_id");
+
+  if (!attemptId) {
+    redirect("/practice");
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data: attempt } = await supabase
+    .from("quiz_attempts")
+    .select("id, user_id, status")
+    .eq("id", attemptId)
+    .single();
+
+  if (!attempt || attempt.user_id !== profile.id || attempt.status !== "in_progress") {
+    redirect("/practice");
+  }
+
+  await supabase
+    .from("quiz_attempts")
+    .update({ status: "abandoned" })
+    .eq("id", attemptId);
+
+  redirect("/practice");
+}
