@@ -48,6 +48,9 @@ export default async function AdminPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
+              <Link className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto")} href="/admin/questions">
+                Questions
+              </Link>
               <Link className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto")} href="/admin/bugs">
                 Bug Reports
               </Link>
