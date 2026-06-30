@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { loginAction } from "@/app/auth/actions";
+import { loginAction, guestSignInAction } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -49,6 +49,16 @@ export default function LoginPage() {
               Request an account
             </Link>
           </p>
+          <div className="mt-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <form action={guestSignInAction} className="mt-4">
+            <Button className="w-full" type="submit" size="lg" variant="outline">
+              Continue as Guest
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </main>
