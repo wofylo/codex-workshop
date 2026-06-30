@@ -258,6 +258,52 @@ function StudySectionNavigation({
   );
 }
 
+type InlineSegment = { type: "text"; content: string } | { type: "link"; text: string; href: string };
+
+function parseInlineSegments(text: string): InlineSegment[] {
+  const segments: InlineSegment[] = [];
+  const pattern = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: "text", content: text.slice(lastIndex, match.index) });
+    }
+    segments.push({ type: "link", text: match[1], href: match[2] });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push({ type: "text", content: text.slice(lastIndex) });
+  }
+
+  return segments;
+}
+
+function InlineContent({ text }: { text: string }) {
+  const segments = parseInlineSegments(text);
+  return (
+    <>
+      {segments.map((seg, i) =>
+        seg.type === "link" ? (
+          <a
+            className="text-primary underline underline-offset-2 hover:text-primary/80"
+            href={seg.href}
+            key={i}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            {seg.text}
+          </a>
+        ) : (
+          <span key={i}>{seg.content}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 function MarkdownBlockView({ block }: { block: MarkdownBlock }) {
   if (block.type === "heading") {
     const Tag = block.depth === 1 ? "h1" : block.depth === 2 ? "h2" : "h3";
@@ -274,13 +320,17 @@ function MarkdownBlockView({ block }: { block: MarkdownBlock }) {
   }
 
   if (block.type === "paragraph") {
-    return <p className="text-sm leading-7 text-muted-foreground sm:text-base">{block.text}</p>;
+    return (
+      <p className="text-sm leading-7 text-muted-foreground sm:text-base">
+        <InlineContent text={block.text} />
+      </p>
+    );
   }
 
   if (block.type === "quote") {
     return (
       <blockquote className="border-l-2 border-primary/60 pl-4 text-sm leading-7 text-secondary-foreground">
-        {block.text}
+        <InlineContent text={block.text} />
       </blockquote>
     );
   }
@@ -292,7 +342,7 @@ function MarkdownBlockView({ block }: { block: MarkdownBlock }) {
       <ListTag className="ml-5 space-y-2 text-sm leading-7 text-muted-foreground sm:text-base">
         {block.items.map((item, index) => (
           <li className={block.ordered ? "list-decimal" : "list-disc"} key={`${item}-${index}`}>
-            {item}
+            <InlineContent text={item} />
           </li>
         ))}
       </ListTag>
