@@ -90,6 +90,51 @@ Region: ap-northeast-1
 
 Use the Supabase access token for CLI/API work. Use `SUPABASE_SECRET_KEY` only server-side.
 
+### Supabase CLI
+
+The CLI is installed globally (`supabase` v2.108.0) and the project is linked. Always set the token before running CLI commands:
+
+```powershell
+$env:SUPABASE_ACCESS_TOKEN = (Get-Content "C:\secrets\.env" | Where-Object { $_ -match "^SUPABASE_ACCESS_TOKEN=" }) -replace "^SUPABASE_ACCESS_TOKEN=",""
+```
+
+**Run a SQL query against production:**
+
+```powershell
+supabase db query --linked --file path\to\query.sql
+```
+
+**Apply pending migrations:**
+
+```powershell
+supabase db push --linked
+```
+
+**Check migration state (local vs remote):**
+
+```powershell
+supabase migration list
+```
+
+**Repair migration tracking** (when local/remote diverge):
+
+```powershell
+supabase migration repair --status applied <version>   # mark as applied without running
+supabase migration repair --status reverted <version>  # remove from tracking
+```
+
+**Regen TypeScript types from live schema:**
+
+```powershell
+supabase gen types typescript --linked > src/lib/supabase/database.types.ts
+```
+
+### Migration workflow
+
+- New migrations go in `supabase/migrations/` as `YYYYMMDDHHMMSS_<name>.sql`
+- Pushing to `main` with changes under `supabase/migrations/**` triggers the GitHub Actions workflow (`.github/workflows/migrate.yml`) which runs `supabase db push` automatically
+- Never apply schema changes via the Supabase dashboard SQL editor — always use migration files so the CLI tracking stays in sync
+
 ## Current Auth State
 
 Last checked production database state on 2026-06-18 21:23 +08:00:
