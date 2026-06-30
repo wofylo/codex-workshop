@@ -122,6 +122,11 @@ export default async function AdminBugsPage() {
                         <Badge variant="secondary">
                           {CATEGORY_LABELS[report.category] ?? report.category}
                         </Badge>
+                        {report.user_id === null && (
+                          <Badge variant="secondary" className="text-xs">
+                            Guest
+                          </Badge>
+                        )}
                       </div>
                       <span className="text-xs text-muted-foreground">
                         {createdAt}
