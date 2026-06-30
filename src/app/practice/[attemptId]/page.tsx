@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireApprovedUser } from "@/lib/auth/guards";
+import { requireGuestOrApprovedUser } from "@/lib/auth/guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { AttemptForm } from "@/components/quiz/attempt-form";
 import { choiceLabel } from "@/lib/quiz/helpers";
@@ -16,7 +16,7 @@ type AttemptPageProps = {
 };
 
 export default async function AttemptPage({ params }: AttemptPageProps) {
-  const profile = await requireApprovedUser();
+  const user = await requireGuestOrApprovedUser();
   const { attemptId } = await params;
 
   const supabase = await createServerSupabaseClient();
@@ -27,7 +27,7 @@ export default async function AttemptPage({ params }: AttemptPageProps) {
     .eq("id", attemptId)
     .single();
 
-  if (!attempt || attempt.user_id !== profile.id) {
+  if (!attempt || attempt.user_id !== user.id) {
     notFound();
   }
 

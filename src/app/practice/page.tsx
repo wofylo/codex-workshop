@@ -3,7 +3,7 @@ import { ArrowLeft, BookOpenCheck, ClipboardList, TriangleAlert } from "lucide-r
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireApprovedUser } from "@/lib/auth/guards";
+import { requireGuestOrApprovedUser, isGuestUser } from "@/lib/auth/guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { startQuizAction, abandonAttemptAction } from "@/app/practice/actions";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export default async function PracticePage({ searchParams }: PracticePageProps) {
-  await requireApprovedUser();
+  const user = await requireGuestOrApprovedUser();
 
   const params = await searchParams;
   const errorMessage = params?.error ? (ERROR_MESSAGES[params.error] ?? "Something went wrong.") : null;
@@ -49,10 +49,12 @@ export default async function PracticePage({ searchParams }: PracticePageProps) 
     <main className="min-h-svh bg-background text-foreground">
       <section className="mx-auto w-full max-w-3xl space-y-6 px-6 py-8">
         <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center">
-          <Link className={cn(buttonVariants({ variant: "outline" }), "h-8 w-fit")} href="/dashboard">
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Dashboard
-          </Link>
+          {!isGuestUser(user) && (
+            <Link className={cn(buttonVariants({ variant: "outline" }), "h-8 w-fit")} href="/dashboard">
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              Dashboard
+            </Link>
+          )}
           <div>
             <h1 className="text-2xl font-semibold">Practice Quiz</h1>
             <p className="mt-1 text-sm text-muted-foreground">
