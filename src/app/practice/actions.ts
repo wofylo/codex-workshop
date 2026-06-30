@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireGuestOrApprovedUser } from "@/lib/auth/guards";
+import { requireApprovedUser } from "@/lib/auth/guards";
 import { parseChoiceIndex, scoreAnswer } from "@/lib/quiz/helpers";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { QuizQuestionSnapshot } from "@/lib/quiz/helpers";
@@ -23,7 +23,7 @@ function shuffle<T>(arr: T[]): T[] {
 const MOCK_EXAM_TOTAL = 40;
 
 export async function startQuizAction(formData: FormData) {
-  const user = await requireGuestOrApprovedUser();
+  const profile = await requireApprovedUser();
   const rawMode = getString(formData, "mode");
   const mode: "learning" | "mock_exam" = rawMode === "mock_exam" ? "mock_exam" : "learning";
   const supabase = await createServerSupabaseClient();
@@ -105,7 +105,7 @@ export async function startQuizAction(formData: FormData) {
   const { data: attempt, error: attemptError } = await supabase
     .from("quiz_attempts")
     .insert({
-      user_id: user.id,
+      user_id: profile.id,
       domain_id: domainId,
       language: "en",
       mode,
@@ -143,7 +143,7 @@ export async function startQuizAction(formData: FormData) {
 }
 
 export async function submitAttemptAction(formData: FormData) {
-  const user = await requireGuestOrApprovedUser();
+  const profile = await requireApprovedUser();
   const attemptId = getString(formData, "attempt_id");
 
   if (!attemptId) {
@@ -158,7 +158,7 @@ export async function submitAttemptAction(formData: FormData) {
     .eq("id", attemptId)
     .single();
 
-  if (!attempt || attempt.user_id !== user.id || attempt.status !== "in_progress") {
+  if (!attempt || attempt.user_id !== profile.id || attempt.status !== "in_progress") {
     redirect("/practice");
   }
 
@@ -176,8 +176,9 @@ export async function submitAttemptAction(formData: FormData) {
   const answers = attemptQuestions.map((aq) => {
     const raw = formData.get(`q_${aq.id}`);
     const selectedIndex = parseChoiceIndex(raw);
-    const isCorrect =
-      selectedIndex !== null ? scoreAnswer(selectedIndex, aq.correct_choice_index_snapshot) : null;
+    const isCorrect = selectedIndex !== null
+      ? scoreAnswer(selectedIndex, aq.correct_choice_index_snapshot)
+      : null;
     return {
       attempt_id: attemptId,
       attempt_question_id: aq.id,
@@ -215,7 +216,7 @@ export async function submitAttemptAction(formData: FormData) {
 }
 
 export async function saveAnswerAction(formData: FormData): Promise<void> {
-  const user = await requireGuestOrApprovedUser();
+  const profile = await requireApprovedUser();
   const attemptId = getString(formData, "attempt_id");
   const attemptQuestionId = getString(formData, "attempt_question_id");
   const questionId = getString(formData, "question_id");
@@ -245,7 +246,7 @@ export async function saveAnswerAction(formData: FormData): Promise<void> {
     .eq("id", attemptId)
     .single();
 
-  if (!attempt || attempt.user_id !== user.id || attempt.status !== "in_progress") return;
+  if (!attempt || attempt.user_id !== profile.id || attempt.status !== "in_progress") return;
 
   await supabase.from("quiz_attempt_answers").upsert(
     {
@@ -261,7 +262,7 @@ export async function saveAnswerAction(formData: FormData): Promise<void> {
 }
 
 export async function abandonAttemptAction(formData: FormData): Promise<void> {
-  const user = await requireGuestOrApprovedUser();
+  const profile = await requireApprovedUser();
   const attemptId = getString(formData, "attempt_id");
 
   if (!attemptId) {
@@ -276,7 +277,7 @@ export async function abandonAttemptAction(formData: FormData): Promise<void> {
     .eq("id", attemptId)
     .single();
 
-  if (!attempt || attempt.user_id !== user.id || attempt.status !== "in_progress") {
+  if (!attempt || attempt.user_id !== profile.id || attempt.status !== "in_progress") {
     redirect("/practice");
   }
 

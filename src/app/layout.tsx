@@ -14,23 +14,21 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   let isAuthenticated = false;
-  let isGuest = false;
   try {
     const supabase = await createServerSupabaseClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
     isAuthenticated = !!user;
-    isGuest = user?.is_anonymous ?? false;
   } catch {
-    // Not authenticated or cookie unavailable — keep defaults
+    // Not authenticated or cookie unavailable — keep isAuthenticated = false
   }
 
   return (
     <html lang="en">
       <body>
         {children}
-        {isAuthenticated && <BugReportButton isGuest={isGuest} />}
+        {isAuthenticated && <BugReportButton />}
       </body>
     </html>
   );

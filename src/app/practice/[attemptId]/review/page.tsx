@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireGuestOrApprovedUser, isGuestUser } from "@/lib/auth/guards";
+import { requireApprovedUser } from "@/lib/auth/guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { choiceLabel } from "@/lib/quiz/helpers";
 import type { QuizQuestionSnapshot } from "@/lib/quiz/helpers";
@@ -15,7 +15,7 @@ type ReviewPageProps = {
 };
 
 export default async function ReviewPage({ params }: ReviewPageProps) {
-  const user = await requireGuestOrApprovedUser();
+  const profile = await requireApprovedUser();
   const { attemptId } = await params;
 
   const supabase = await createServerSupabaseClient();
@@ -26,7 +26,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     .eq("id", attemptId)
     .single();
 
-  if (!attempt || attempt.user_id !== user.id || attempt.status !== "completed") {
+  if (!attempt || attempt.user_id !== profile.id || attempt.status !== "completed") {
     notFound();
   }
 
@@ -78,11 +78,9 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
             </Link>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            {!isGuestUser(user) && (
-              <Link className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto")} href="/dashboard">
-                Dashboard
-              </Link>
-            )}
+            <Link className={cn(buttonVariants({ variant: "outline" }), "w-full sm:w-auto")} href="/dashboard">
+              Dashboard
+            </Link>
             <Link className={cn(buttonVariants({ variant: "default" }), "w-full sm:w-auto")} href="/practice">
               Try Again
             </Link>

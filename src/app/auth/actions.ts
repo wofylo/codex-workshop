@@ -81,14 +81,3 @@ export async function logoutAction() {
   await supabase.auth.signOut();
   redirect("/auth/login");
 }
-
-export async function guestSignInAction(): Promise<void> {
-  const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.auth.signInAnonymously();
-
-  if (error) {
-    redirect("/auth/error?reason=guest");
-  }
-
-  redirect("/practice");
-}
