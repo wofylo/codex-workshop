@@ -3,13 +3,19 @@
 import { useEffect, useState, useTransition } from "react";
 import { AlertCircle, CheckCircle2, Loader2, Paperclip, X } from "lucide-react";
 import Link from "next/link";
-import { createBugReportAction } from "@/app/bug-report/actions";
+import { createBugReportAction, createGuestBugReportAction } from "@/app/bug-report/actions";
 import { MAX_FILE_SIZE, MAX_FILES } from "@/lib/bug-reports/validation";
 import { cn } from "@/lib/utils";
 
 type DialogState = "idle" | "success" | "error";
 
-export function BugReportDialog({ onClose }: { onClose: () => void }) {
+export function BugReportDialog({
+  onClose,
+  isGuest,
+}: {
+  onClose: () => void;
+  isGuest: boolean;
+}) {
   const [files, setFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [dialogState, setDialogState] = useState<DialogState>("idle");
@@ -19,7 +25,6 @@ export function BugReportDialog({ onClose }: { onClose: () => void }) {
   );
   const [isPending, startTransition] = useTransition();
 
-  // Close on Escape key
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -52,10 +57,16 @@ export function BugReportDialog({ onClose }: { onClose: () => void }) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    files.forEach((f) => formData.append("files", f));
 
     startTransition(async () => {
-      const result = await createBugReportAction(formData);
+      let result;
+      if (isGuest) {
+        result = await createGuestBugReportAction(formData);
+      } else {
+        files.forEach((f) => formData.append("files", f));
+        result = await createBugReportAction(formData);
+      }
+
       if (result.success) {
         setDialogState("success");
       } else {
@@ -100,13 +111,15 @@ export function BugReportDialog({ onClose }: { onClose: () => void }) {
             <p className="text-sm text-muted-foreground">
               We will review it and update the status.
             </p>
-            <Link
-              className="text-sm text-primary underline underline-offset-2"
-              href="/my-bugs"
-              onClick={onClose}
-            >
-              View your reports →
-            </Link>
+            {!isGuest && (
+              <Link
+                className="text-sm text-primary underline underline-offset-2"
+                href="/my-bugs"
+                onClick={onClose}
+              >
+                View your reports →
+              </Link>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 px-5 py-5">
@@ -160,49 +173,51 @@ export function BugReportDialog({ onClose }: { onClose: () => void }) {
               </select>
             </div>
 
-            {/* File upload */}
-            <div className="space-y-1.5">
-              <p className="text-sm font-medium">
-                Attachments{" "}
-                <span className="font-normal text-muted-foreground">
-                  (up to {MAX_FILES} files, 5 MB each)
-                </span>
-              </p>
-              {files.length < MAX_FILES && (
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-primary hover:underline">
-                  <Paperclip className="size-4" aria-hidden="true" />
-                  Add file
-                  <input
-                    accept="image/*,.pdf,.txt"
-                    className="sr-only"
-                    multiple
-                    onChange={handleFileChange}
-                    type="file"
-                  />
-                </label>
-              )}
-              {files.length > 0 && (
-                <ul className="space-y-1">
-                  {files.map((f, i) => (
-                    <li key={`${f.name}-${f.size}`} className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="min-w-0 flex-1 truncate">{f.name}</span>
-                      <span className="shrink-0">({(f.size / 1024).toFixed(0)} KB)</span>
-                      <button
-                        aria-label={`Remove ${f.name}`}
-                        className="ml-1 shrink-0 text-muted-foreground hover:text-foreground"
-                        onClick={() => removeFile(i)}
-                        type="button"
-                      >
-                        <X className="size-3" aria-hidden="true" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {fileError && (
-                <p className="text-xs text-destructive">{fileError}</p>
-              )}
-            </div>
+            {/* File upload — signed-in users only */}
+            {!isGuest && (
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium">
+                  Attachments{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (up to {MAX_FILES} files, 5 MB each)
+                  </span>
+                </p>
+                {files.length < MAX_FILES && (
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-primary hover:underline">
+                    <Paperclip className="size-4" aria-hidden="true" />
+                    Add file
+                    <input
+                      accept="image/*,.pdf,.txt"
+                      className="sr-only"
+                      multiple
+                      onChange={handleFileChange}
+                      type="file"
+                    />
+                  </label>
+                )}
+                {files.length > 0 && (
+                  <ul className="space-y-1">
+                    {files.map((f, i) => (
+                      <li key={`${f.name}-${f.size}`} className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                        <span className="shrink-0">({(f.size / 1024).toFixed(0)} KB)</span>
+                        <button
+                          aria-label={`Remove ${f.name}`}
+                          className="ml-1 shrink-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => removeFile(i)}
+                          type="button"
+                        >
+                          <X className="size-3" aria-hidden="true" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {fileError && (
+                  <p className="text-xs text-destructive">{fileError}</p>
+                )}
+              </div>
+            )}
 
             {/* Submission error */}
             {dialogState === "error" && errorMessage && (

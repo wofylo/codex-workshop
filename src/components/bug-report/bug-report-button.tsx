@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Bug } from "lucide-react";
 import { BugReportDialog } from "./bug-report-dialog";
 
-export function BugReportButton() {
+export function BugReportButton({ isGuest }: { isGuest: boolean }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -17,7 +17,7 @@ export function BugReportButton() {
       >
         <Bug className="size-5" aria-hidden="true" />
       </button>
-      {open && <BugReportDialog onClose={() => setOpen(false)} />}
+      {open && <BugReportDialog isGuest={isGuest} onClose={() => setOpen(false)} />}
     </>
   );
 }
